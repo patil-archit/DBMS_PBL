@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=VT323&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: #FAF8F5;
+  --color-text-main: #111111;
+  --color-text-muted: #555555;
+  --color-accent-red: #DF6A61;
+  --color-accent-blue: #79A3D2;
+  --color-accent-teal: #4B9F9F;
+  --color-accent-navy: #1A1D24;
+  --color-surface-white: #FFFFFF;
+  --color-border: #111111;
+
+  --shadow-brutal: 4px 4px 0px 0px #111111;
+  --shadow-brutal-lg: 8px 8px 0px 0px #111111;
+  --shadow-brutal-hover: 2px 2px 0px 0px #111111;
+  --shadow-brutal-white: 4px 4px 0px 0px #FFFFFF;
+  
+  --font-main: 'Space Grotesk', sans-serif;
+  --font-pixel: 'VT323', monospace;
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-main);
+  margin: 0;
+  font-family: var(--font-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for brutalist look */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  border-left: 2px solid var(--color-border);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-main);
+  border: 2px solid var(--color-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-red);
+}
+
+/* Utilities for neo-brutalism */
+@utility shadow-brutal {
+  box-shadow: var(--shadow-brutal);
+}
+
+@utility shadow-brutal-lg {
+  box-shadow: var(--shadow-brutal-lg);
+}
+
+@utility shadow-brutal-hover {
+  box-shadow: var(--shadow-brutal-hover);
+}
+
+@utility font-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.05em;
+}
+
+@utility border-brutal {
+  border: 2px solid var(--color-border);
+}
+
+@utility border-brutal-thick {
+  border: 3px solid var(--color-border);
+}
+
+/* Base styles for selections */
+::selection {
+  background-color: var(--color-accent-teal);
+  color: var(--color-surface-white);
+}
