@@ -20,14 +20,23 @@ const BookDetailsPage = () => {
   const { currentUser, loginWithGoogle } = useAuth();
   const [libraryStatus, setLibraryStatus] = useState('idle'); // idle, loading, success, error
 
-  const handleAddToLibrary = async () => {
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+
+  const handleAddToLibraryClick = () => {
     if (!currentUser) {
       loginWithGoogle();
       return;
     }
+    setShowReviewModal(true);
+  };
+
+  const confirmAddToLibrary = async () => {
     try {
       setLibraryStatus('loading');
-      await addToLibrary(currentUser.uid, book.title);
+      setShowReviewModal(false);
+      await addToLibrary(currentUser.uid, book.title, rating, reviewText);
       setLibraryStatus('success');
     } catch (err) {
       console.error(err);
@@ -45,13 +54,15 @@ const BookDetailsPage = () => {
         const decodedTitle = decodeURIComponent(title);
         const [bookData, recsData] = await Promise.all([
           getBookDetails(decodedTitle, currentUser?.uid),
-          getRecommendations(decodedTitle)
+          getRecommendations(decodedTitle, currentUser?.uid)
         ]);
         
         setBook(bookData);
         setRecommendations(recsData);
         if (bookData.in_library) {
           setLibraryStatus('success');
+          if (bookData.user_rating) setRating(bookData.user_rating);
+          if (bookData.user_review) setReviewText(bookData.user_review);
         } else {
           setLibraryStatus('idle');
         }
@@ -158,14 +169,14 @@ const BookDetailsPage = () => {
                 {book.title}
               </h1>
               <NeoButton 
-                onClick={handleAddToLibrary}
+                onClick={handleAddToLibraryClick}
                 variant={libraryStatus === 'success' ? 'secondary' : 'primary'}
                 size="md"
                 className="flex-shrink-0"
-                disabled={libraryStatus === 'loading' || libraryStatus === 'success'}
+                disabled={libraryStatus === 'loading'}
               >
                 {libraryStatus === 'loading' ? 'Saving...' : 
-                 libraryStatus === 'success' ? 'Saved to Library' : 
+                 libraryStatus === 'success' ? 'Edit Review' : 
                  currentUser ? 'Add to Library' : 'Login to Save'}
               </NeoButton>
             </div>
@@ -268,8 +279,9 @@ const BookDetailsPage = () => {
 > TARGET NODE: "${book.title}"
 > MATCHING (Book)-[:HAS_CATEGORY]->(Category)<-[:HAS_CATEGORY]-(Recommendation)
 > FILTERING b <> Recommendation
+> CHECKING SOCIAL GRAPH FOR FRIEND OVERLAP...
 > CALCULATING SCORE MATRICES:
-  Score = 5 * (Shared Categories) + 3 * (Avg Rating) + 2 * (Popularity)
+  Score = 5 * (Shared Categories) + 3 * (Avg Rating) + 2 * (Popularity) + 2 * (Friends Who Read)
 > SORTING DESCENDING...
 > RETURN TOP 10`}
                   </pre>
@@ -305,6 +317,56 @@ const BookDetailsPage = () => {
         </div>
 
       </div>
+
+        {/* Review Modal */}
+        <AnimatePresence>
+          {showReviewModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-bg-base border-[4px] border-border shadow-brutal-lg max-w-lg w-full"
+              >
+                <div className="bg-text-main text-white p-4 border-b-[4px] border-border flex justify-between items-center">
+                  <h3 className="font-pixel text-xl uppercase tracking-widest">Add to Library</h3>
+                  <button onClick={() => setShowReviewModal(false)} className="hover:text-accent-red font-bold text-xl">X</button>
+                </div>
+                <div className="p-6">
+                  <h4 className="text-2xl font-black mb-4">How was the book?</h4>
+                  <div className="mb-6 flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star 
+                        key={star} 
+                        className={`w-10 h-10 cursor-pointer transition-colors ${rating >= star ? 'fill-accent-red text-accent-red' : 'text-gray-400'}`} 
+                        onClick={() => setRating(star)} 
+                      />
+                    ))}
+                  </div>
+                  <div className="mb-6">
+                    <label className="block font-pixel text-sm uppercase mb-2 text-text-muted">Short Review (Optional)</label>
+                    <textarea 
+                      className="w-full bg-surface-white border-[3px] border-border p-3 font-medium outline-none focus:border-accent-teal transition-colors resize-none h-24"
+                      placeholder="Write your thoughts..."
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <NeoButton onClick={confirmAddToLibrary} variant="primary" className="flex-1">Save to Library</NeoButton>
+                    <NeoButton onClick={() => setShowReviewModal(false)} variant="white">Cancel</NeoButton>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
     </div>
   );
 };

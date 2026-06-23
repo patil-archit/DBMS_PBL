@@ -1,4 +1,5 @@
 import time
+import uuid
 import os
 import glob
 import re
@@ -219,13 +220,14 @@ def follow_author(uid: str, author_name: str) -> bool:
     """Creates a directed FOLLOWS relationship in Neo4j."""
     cypher_query = """
     MERGE (u:User {uid: $uid})
+    SET u.friend_code = coalesce(u.friend_code, $friend_code)
     WITH u
     MATCH (a:Author {name: $author_name})
     MERGE (u)-[:FOLLOWS]->(a)
     RETURN a
     """
     with db.get_session() as session:
-        result = session.run(cypher_query, parameters={"uid": uid, "author_name": author_name})
+        result = session.run(cypher_query, parameters={"uid": uid, "author_name": author_name, "friend_code": str(uuid.uuid4())[:8]})
         return result.single() is not None
 
 def unfollow_author(uid: str, author_name: str) -> bool:
@@ -282,7 +284,9 @@ def get_book_details(title: str, uid: str = None):
            b.isbn10 AS isbn10,
            collect(DISTINCT a.name) AS authors,
            collect(DISTINCT c.name) AS categories,
-           r IS NOT NULL AS in_library
+           r IS NOT NULL AS in_library,
+           r.rating AS user_rating,
+           r.review AS user_review
     """
     with db.get_session() as session:
         result = session.run(cypher_query, parameters={"title": title, "uid": uid or ""})
@@ -291,17 +295,22 @@ def get_book_details(title: str, uid: str = None):
             return record.data()
         return None
 
-def get_recommendations(title: str):
+def get_recommendations(title: str, uid: str = None):
     cypher_query = """
     MATCH (b:Book {title: $title})-[:HAS_CATEGORY]->(c:Category)<-[:HAS_CATEGORY]-(rec:Book)
     WHERE b <> rec
     WITH rec, collect(DISTINCT c.name) AS shared_categories
+    
+    OPTIONAL MATCH (u:User {uid: $uid})-[:FOLLOWS]->(f:User)-[:ADDED_TO_LIBRARY]->(rec)
+    WITH rec, shared_categories, count(DISTINCT f) AS friends_who_read
+    
     WITH rec, 
          size(shared_categories) AS category_overlap,
          coalesce(toFloat(rec.average_rating), 0.0) AS avg_rating,
-         coalesce(toFloat(rec.ratings_count), 0.0) AS popularity
-    WITH rec, category_overlap, avg_rating, popularity,
-         (5 * category_overlap + 3 * avg_rating + 2 * popularity) AS score
+         coalesce(toFloat(rec.ratings_count), 0.0) AS popularity,
+         friends_who_read
+    WITH rec, category_overlap, avg_rating, popularity, friends_who_read,
+         (5 * category_overlap + 3 * avg_rating + 2 * popularity + 2 * friends_who_read) AS score
     ORDER BY score DESC
     LIMIT 10
     OPTIONAL MATCH (rec)-[:WRITTEN_BY]->(a:Author)
@@ -312,7 +321,7 @@ def get_recommendations(title: str):
            score
     """
     with db.get_session() as session:
-        result = session.run(cypher_query, parameters={"title": title})
+        result = session.run(cypher_query, parameters={"title": title, "uid": uid or ""})
         return [record.data() for record in result]
 
 def get_all_books():
@@ -332,16 +341,26 @@ def get_all_books():
         result = session.run(cypher_query)
         return [record.data() for record in result]
 
-def add_book_to_library(uid: str, book_title: str):
+def add_book_to_library(uid: str, book_title: str, rating: int = None, review: str = None):
     cypher_query = """
     MERGE (u:User {uid: $uid})
+    SET u.friend_code = coalesce(u.friend_code, $friend_code)
     WITH u
     MATCH (b:Book {title: $book_title})
-    MERGE (u)-[:ADDED_TO_LIBRARY]->(b)
+    MERGE (u)-[r:ADDED_TO_LIBRARY]->(b)
+    SET r.rating = $rating,
+        r.review = $review,
+        r.timestamp = datetime()
     RETURN b
     """
     with db.get_session() as session:
-        result = session.run(cypher_query, parameters={"uid": uid, "book_title": book_title})
+        result = session.run(cypher_query, parameters={
+            "uid": uid, 
+            "book_title": book_title, 
+            "rating": rating,
+            "review": review,
+            "friend_code": str(uuid.uuid4())[:8]
+        })
         return result.single() is not None
 
 def get_user_library(uid: str):
@@ -492,6 +511,7 @@ def get_user_followed_authors(uid: str):
 def get_personalized_recommendations(uid: str):
     cypher_query = """
     MERGE (u:User {uid: $uid})
+    SET u.friend_code = coalesce(u.friend_code, $friend_code)
     WITH u
     
     // Category overlap matches (Weight = 1 point per match)
@@ -502,8 +522,12 @@ def get_personalized_recommendations(uid: str):
     OPTIONAL MATCH (u)-[:FOLLOWS]->(a:Author)<-[:WRITTEN_BY]-(rec2:Book)
     WHERE NOT (u)-[:ADDED_TO_LIBRARY]->(rec2)
     
+    // Friend read matches (Weight = 2 points per match)
+    OPTIONAL MATCH (u)-[:FOLLOWS_USER]->(:User)-[:ADDED_TO_LIBRARY]->(rec3:Book)
+    WHERE NOT (u)-[:ADDED_TO_LIBRARY]->(rec3)
+    
     // Combine recommendations and calculate scores
-    WITH collect({book: rec1, weight: 1}) + collect({book: rec2, weight: 5}) AS raw_recs
+    WITH collect({book: rec1, weight: 1}) + collect({book: rec2, weight: 5}) + collect({book: rec3, weight: 2}) AS raw_recs
     UNWIND raw_recs AS raw_rec
     WITH raw_rec.book AS rec, raw_rec.weight AS weight
     WHERE rec IS NOT NULL
@@ -523,17 +547,15 @@ def get_personalized_recommendations(uid: str):
     LIMIT 10
     """
     with db.get_session() as session:
-        result = session.run(cypher_query, parameters={"uid": uid})
+        result = session.run(cypher_query, parameters={"uid": uid, "friend_code": str(uuid.uuid4())[:8]})
         recs = [record.data() for record in result]
         
         if len(recs) < 10:
             limit = 10 - len(recs)
             existing_titles = [r["title"] for r in recs]
-            
-            backfill_query = """
-            MATCH (u:User {uid: $uid})
+            default_query = """
             MATCH (b:Book)
-            WHERE NOT b.title IN $existing_titles AND NOT (u)-[:ADDED_TO_LIBRARY]->(b)
+            WHERE NOT b.title IN $existing_titles
             OPTIONAL MATCH (b)-[:WRITTEN_BY]->(a:Author)
             OPTIONAL MATCH (b)-[:HAS_CATEGORY]->(c:Category)
             RETURN b.title AS title,
@@ -545,10 +567,143 @@ def get_personalized_recommendations(uid: str):
             ORDER BY b.average_rating DESC
             LIMIT $limit
             """
-            backfill_res = session.run(backfill_query, parameters={"uid": uid, "existing_titles": existing_titles, "limit": limit})
-            recs.extend([record.data() for record in backfill_res])
+            default_res = session.run(default_query, parameters={"existing_titles": existing_titles, "limit": limit})
+            recs.extend([record.data() for record in default_res])
             
         return recs
+
+# =====================================================================
+# SOCIAL GRAPH & FRIENDS FEATURES
+# =====================================================================
+
+def get_user_profile(uid: str, name: str = "Unknown User"):
+    """Gets the user profile including their friend code. Creates it if missing."""
+    cypher_query = """
+    MERGE (u:User {uid: $uid})
+    SET u.friend_code = coalesce(u.friend_code, $friend_code),
+        u.name = $name
+    RETURN u.friend_code AS friend_code, u.name AS name, u.uid AS uid
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid, "name": name, "friend_code": str(uuid.uuid4())[:8]})
+        record = result.single()
+        return record.data() if record else None
+
+def follow_user(uid: str, target_friend_code: str) -> bool:
+    """Creates a directed FOLLOWS_USER relationship."""
+    cypher_query = """
+    MERGE (u1:User {uid: $uid})
+    SET u1.friend_code = coalesce(u1.friend_code, $friend_code)
+    WITH u1
+    MATCH (u2:User {friend_code: $target_friend_code})
+    WHERE u1.uid <> u2.uid
+    MERGE (u1)-[:FOLLOWS_USER]->(u2)
+    MERGE (u2)-[:FOLLOWS_USER]->(u1)
+    RETURN u2
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid, "target_friend_code": target_friend_code, "friend_code": str(uuid.uuid4())[:8]})
+        return result.single() is not None
+
+def unfollow_user(uid: str, target_friend_code: str) -> bool:
+    """Deletes a FOLLOWS_USER relationship."""
+    cypher_query = """
+    MATCH (u1:User {uid: $uid})-[r1:FOLLOWS_USER]->(u2:User {friend_code: $target_friend_code})
+    OPTIONAL MATCH (u2)-[r2:FOLLOWS_USER]->(u1)
+    DELETE r1, r2
+    RETURN u2
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid, "target_friend_code": target_friend_code})
+        return result.single() is not None
+
+def get_user_friends(uid: str):
+    """Gets list of users followed by the current user."""
+    cypher_query = """
+    MATCH (u:User {uid: $uid})-[:FOLLOWS_USER]->(friend:User)
+    RETURN friend.friend_code AS friend_code, friend.name AS name, friend.uid AS uid
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid})
+        return [record.data() for record in result]
+
+def get_friends_activity(uid: str):
+    """Gets books recently added by friends."""
+    cypher_query = """
+    MATCH (u:User {uid: $uid})-[:FOLLOWS_USER]->(friend:User)-[r:ADDED_TO_LIBRARY]->(b:Book)
+    OPTIONAL MATCH (b)-[:WRITTEN_BY]->(a:Author)
+    RETURN b.title AS title,
+           b.thumbnail AS thumbnail,
+           b.average_rating AS average_rating,
+           collect(DISTINCT a.name) AS authors,
+           friend.friend_code AS friend_code,
+           friend.name AS friend_name,
+           r.rating AS rating,
+           r.review AS review,
+           r.timestamp AS timestamp
+    ORDER BY r.timestamp DESC
+    LIMIT 20
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid})
+        return [record.data() for record in result]
+
+def get_friend_suggestions(uid: str):
+    """Uses Triadic Closure to suggest friends of friends."""
+    cypher_query = """
+    MATCH (u:User {uid: $uid})-[:FOLLOWS_USER]->(friend:User)-[:FOLLOWS_USER]->(fof:User)
+    WHERE u <> fof AND NOT (u)-[:FOLLOWS_USER]->(fof)
+    RETURN fof.friend_code AS friend_code, 
+           fof.name AS name, 
+           count(friend) AS mutual_friends
+    ORDER BY mutual_friends DESC
+    LIMIT 5
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid})
+        return [record.data() for record in result]
+
+def compare_libraries(uid: str, target_friend_code: str):
+    """Calculates Jaccard similarity and returns shared/unique books."""
+    cypher_query = """
+    MATCH (u1:User {uid: $uid})
+    MATCH (u2:User {friend_code: $target_friend_code})
+    
+    OPTIONAL MATCH (u1)-[:ADDED_TO_LIBRARY]->(b_both:Book)<-[:ADDED_TO_LIBRARY]-(u2)
+    WITH u1, u2, collect(DISTINCT b_both) AS both_books
+    
+    OPTIONAL MATCH (u1)-[:ADDED_TO_LIBRARY]->(b1:Book) WHERE NOT (u2)-[:ADDED_TO_LIBRARY]->(b1)
+    WITH u1, u2, both_books, collect(DISTINCT b1) AS u1_only
+    
+    OPTIONAL MATCH (u2)-[:ADDED_TO_LIBRARY]->(b2:Book) WHERE NOT (u1)-[:ADDED_TO_LIBRARY]->(b2)
+    WITH both_books, u1_only, collect(DISTINCT b2) AS u2_only
+    
+    WITH size(both_books) AS intersection, size(both_books) + size(u1_only) + size(u2_only) AS union_val,
+         both_books, u1_only, u2_only
+         
+    RETURN intersection, 
+           union_val,
+           CASE WHEN union_val = 0 THEN 0.0 ELSE (1.0 * intersection) / union_val END AS jaccard_index,
+           [b IN both_books | b.title] AS shared_books,
+           [b IN u1_only | b.title] AS your_unique_books,
+           [b IN u2_only | b.title] AS friend_unique_books
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid, "target_friend_code": target_friend_code})
+        record = result.single()
+        return record.data() if record else None
+
+def get_connection_degree(uid: str, target_friend_code: str):
+    """Uses shortestPath to find 1st/2nd/nth connection degree between users."""
+    cypher_query = """
+    MATCH (u1:User {uid: $uid}), (u2:User {friend_code: $target_friend_code})
+    MATCH p = shortestPath((u1)-[:FOLLOWS_USER*..4]-(u2))
+    RETURN length(p) AS degree
+    """
+    with db.get_session() as session:
+        result = session.run(cypher_query, parameters={"uid": uid, "target_friend_code": target_friend_code})
+        record = result.single()
+        return record["degree"] if record else -1
 
 def get_db_stats():
     """

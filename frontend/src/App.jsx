@@ -8,6 +8,7 @@ import AuthorDetailsPage from './pages/AuthorDetailsPage';
 import GraphPage from './pages/GraphPage';
 import AlgorithmSimulationPage from './pages/AlgorithmSimulationPage';
 import MyLibraryPage from './pages/MyLibraryPage';
+import FriendsPage from './pages/FriendsPage';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
               <Route path="/graph" element={<GraphPage />} />
               <Route path="/simulation" element={<AlgorithmSimulationPage />} />
               <Route path="/library" element={<MyLibraryPage />} />
+              <Route path="/friends" element={<FriendsPage />} />
               {/* Fallback for other routes */}
               <Route path="*" element={<HomePage />} />
             </Routes>

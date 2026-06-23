@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Network, Search, User, BookMarked, Home, LogOut, Activity } from 'lucide-react';
+import { Network, Search, User, BookMarked, Home, LogOut, Activity, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from './NeoButton';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +15,7 @@ const Navbar = () => {
     { name: 'Graph Traversal', path: '/graph', icon: <Network className="w-5 h-5" /> },
     { name: 'Simulation', path: '/simulation', icon: <Activity className="w-5 h-5" /> },
     { name: 'My Library', path: '/library', icon: <BookMarked className="w-5 h-5" /> },
+    { name: 'Friends', path: '/friends', icon: <Users className="w-5 h-5" /> },
   ];
 
   return (

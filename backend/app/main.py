@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import search, books, recommendations, library, author
+from app.routes import search, books, recommendations, library, author, user
 from app.database import db
 
 app = FastAPI(
@@ -32,6 +32,7 @@ app.include_router(books.router)
 app.include_router(recommendations.router)
 app.include_router(library.router)
 app.include_router(author.router)
+app.include_router(user.router)
 
 
 @app.get("/")

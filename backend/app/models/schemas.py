@@ -20,10 +20,23 @@ class BookDetailResponse(BookSearchResponse):
     isbn13: Optional[str] = None
     isbn10: Optional[str] = None
     in_library: bool = False
+    user_rating: Optional[int] = None
+    user_review: Optional[str] = None
 
 class RecommendationResponse(BookBase):
     authors: List[str] = []
     score: float = 0.0
+
+class FriendActivityResponse(BookSearchResponse):
+    friend_code: str
+    friend_name: Optional[str] = None
+    rating: Optional[int] = None
+    review: Optional[str] = None
+
+class LibraryAddRequest(BaseModel):
+    book_title: str
+    rating: Optional[int] = None
+    review: Optional[str] = None
 
 # ---------------------------------------------
 # AUTHOR & GENRE SEARCH SCHEMAS

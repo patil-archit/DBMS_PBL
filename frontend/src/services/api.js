@@ -37,15 +37,16 @@ export const getBookDetails = async (title, uid = null) => {
   return response.data;
 };
 
-export const getRecommendations = async (title) => {
-  const response = await api.get(`/recommendations/${encodeURIComponent(title)}`);
+export const getRecommendations = async (title, uid = null) => {
+  const params = uid ? { uid } : {};
+  const response = await api.get(`/recommendations/${encodeURIComponent(title)}`, { params });
   return response.data;
 };
 
-export const addToLibrary = async (uid, bookTitle) => {
+export const addToLibrary = async (uid, bookTitle, rating = null, review = null) => {
   const token = await auth.currentUser?.getIdToken();
   const response = await api.post('/library/add', 
-    { book_title: bookTitle },
+    { book_title: bookTitle, rating, review },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return response.data;
@@ -110,6 +111,70 @@ export const getPersonalizedRecommendations = async (uid) => {
   const response = await api.get(`/recommendations/user/${uid}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+  return response.data;
+};
+
+// ---------------------------------------------
+// NEW SOCIAL GRAPH / FRIENDS SERVICES
+// ---------------------------------------------
+
+export const getUserProfile = async () => {
+  const token = await auth.currentUser?.getIdToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.get('/api/user/profile', { headers });
+  return response.data;
+};
+
+export const followUser = async (friendCode) => {
+  const token = await auth.currentUser?.getIdToken();
+  const response = await api.post('/api/user/follow', 
+    { friend_code: friendCode },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+export const unfollowUser = async (friendCode) => {
+  const token = await auth.currentUser?.getIdToken();
+  const response = await api.post('/api/user/unfollow', 
+    { friend_code: friendCode },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+export const getUserFriends = async () => {
+  const token = await auth.currentUser?.getIdToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.get('/api/user/friends', { headers });
+  return response.data;
+};
+
+export const getFriendsActivity = async () => {
+  const token = await auth.currentUser?.getIdToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.get('/api/user/friends/activity', { headers });
+  return response.data;
+};
+
+export const getConnectionDegree = async (targetFriendCode) => {
+  const token = await auth.currentUser?.getIdToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.get(`/api/user/connection/${targetFriendCode}`, { headers });
+  return response.data;
+};
+
+export const getFriendSuggestions = async () => {
+  const token = await auth.currentUser?.getIdToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.get('/api/user/suggestions', { headers });
+  return response.data;
+};
+
+export const compareLibraries = async (targetFriendCode) => {
+  const token = await auth.currentUser?.getIdToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.get(`/api/user/compare/${targetFriendCode}`, { headers });
   return response.data;
 };
 

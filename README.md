@@ -245,6 +245,25 @@ Performing a full in-memory BMH approximate search requires access to all books,
 
 ---
 
+### 7. Social Graph Analytics & Triadic Closure
+#### 🔍 The Concept
+A major component of GraphBooks is its native Social Network. Users can add books, leave 5-star ratings and reviews, and follow friends. Because Neo4j natively connects data points, calculating social proximity and overlapping libraries is executed directly at the database layer without complex SQL `JOIN` statements.
+
+#### 🛠️ Our Project Adaptation: Social Features
+1. **Triadic Closure for Friend Suggestions**:
+   To suggest new friends to follow, the system uses the property of **Triadic Closure** (Friends of Friends). It queries the graph for users who are followed by your friends, but whom you do not yet follow, ranking them descending by the count of mutual friends.
+   $$(You)-[:FOLLOWS]\rightarrow(Friend)-[:FOLLOWS]\rightarrow(Suggested\_Friend)$$
+
+2. **Jaccard Similarity for Library Compatibility**:
+   When comparing libraries with a friend, the system executes a **Jaccard Index** calculation: the size of the intersection divided by the size of the union of the two libraries.
+   $$\text{Jaccard}(A, B) = \frac{|A \cap B|}{|A \cup B|}$$
+   This algorithm yields a direct percentage "Compatibility Score" and isolates the symmetric difference to show shared books versus unique books.
+
+3. **Social-Boosted Recommendations**:
+   The recommendation engine factors in the `[:ADDED_TO_LIBRARY]` relationships of a user's friends. If a candidate book is present in a friend's library, it receives a $+2.0$ score multiplier, organically surfacing "word of mouth" recommendations based on network proximity.
+
+---
+
 ## 📊 Dataset Ingestion & Wikipedia Enrichment Pipelines
 
 GraphBooks does not rely on empty placeholders. It features a complete, high-fidelity data pipeline that generates and enriches its own corpus:
