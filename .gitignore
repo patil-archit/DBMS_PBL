@@ -1,1 +1,9 @@
 daa-pbl-1fd0e-firebase-adminsdk-fbsvc-4e5c876202.json
+__pycache__/
+*.pyc
+.DS_Store
+venv/
+backend/db/.openlibrary_cache/
+backend/.env
+backups/
+.claude/

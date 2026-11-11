@@ -1,101 +1,150 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Network, Search, User, BookMarked, Home, LogOut, Activity, Users } from 'lucide-react';
+import {
+  Activity, BookMarked, BookOpen, Bot, ChevronDown, Home, List, LogOut, Menu, Search, Settings, Shield, User, Users, X,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from './NeoButton';
+import { Avatar } from './ui';
 import { useAuth } from '../contexts/AuthContext';
+
+const NAV = [
+  { name: 'Home', path: '/', icon: Home },
+  { name: 'Search', path: '/search', icon: Search },
+  { name: 'Lists', path: '/lists', icon: List },
+  { name: 'Feed', path: '/feed', icon: Activity, auth: true },
+  { name: 'People', path: '/people', icon: Users, auth: true },
+  { name: 'Assistant', path: '/chat', icon: Bot, auth: true },
+];
 
 const Navbar = () => {
   const location = useLocation();
-  const { currentUser, loginWithGoogle, logout } = useAuth();
+  const { currentUser, me, isStaff, loginWithGoogle, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+  const userRef = useRef(null);
 
-  const navItems = [
-    { name: 'Home', path: '/', icon: <Home className="w-5 h-5" /> },
-    { name: 'Search', path: '/search', icon: <Search className="w-5 h-5" /> },
-    { name: 'Graph Traversal', path: '/graph', icon: <Network className="w-5 h-5" /> },
-    { name: 'Simulation', path: '/simulation', icon: <Activity className="w-5 h-5" /> },
-    { name: 'My Library', path: '/library', icon: <BookMarked className="w-5 h-5" /> },
-    { name: 'Friends', path: '/friends', icon: <Users className="w-5 h-5" /> },
+  useEffect(() => {
+    setMenuOpen(false);
+    setUserOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const close = (e) => userRef.current && !userRef.current.contains(e.target) && setUserOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const items = NAV.filter((i) => !i.auth || currentUser);
+  const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+
+  const userLinks = [
+    { name: 'My Books', path: '/library', icon: BookMarked },
+    ...(me ? [{ name: 'Profile', path: `/u/${me.username}`, icon: User }] : []),
+    { name: 'Settings', path: '/settings', icon: Settings },
+    ...(isStaff ? [{ name: me?.role === 'admin' ? 'Admin' : 'Moderation', path: '/admin', icon: Shield }] : []),
   ];
 
   return (
     <nav className="border-b-[3px] border-border bg-bg-base sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          
-          {/* Logo */}
-          <Link to="/" className="flex items-center group">
-            <motion.div 
-              className="bg-accent-red border-2 border-border shadow-brutal p-2 mr-4 flex items-center justify-center"
+        <div className="flex items-center justify-between h-20 gap-4">
+          <Link to="/" className="flex items-center group flex-shrink-0">
+            <motion.div
+              className="bg-accent-red border-2 border-border shadow-brutal p-2 mr-3 flex items-center justify-center"
               whileHover={{ rotate: -5, scale: 1.05 }}
-              whileTap={{ scale: 0.95, boxShadow: "0px 0px 0px 0px #111" }}
             >
-              <Network className="w-6 h-6 text-white" strokeWidth={3} />
+              <BookOpen className="w-6 h-6 text-white" strokeWidth={3} />
             </motion.div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-2xl tracking-tight text-text-main leading-none">Biblio<span className="font-pixel text-3xl">Graph</span></span>
-            </div>
+            <span className="font-extrabold text-2xl tracking-tight text-text-main leading-none">Book<span className="font-pixel text-3xl">Log</span></span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+          <div className="hidden lg:flex items-center space-x-1">
+            {items.map(({ name, path, icon: Icon }) => {
+              const active = isActive(path);
               return (
                 <Link
-                  key={item.name}
-                  to={item.path}
-                  className={cn(
-                    "px-4 py-2 font-bold flex items-center transition-colors border-2 border-transparent relative group",
-                    isActive ? "text-text-main" : "text-text-muted hover:text-text-main"
-                  )}
+                  key={name}
+                  to={path}
+                  className={cn('px-3 py-2 font-bold flex items-center transition-colors relative', active ? 'text-white' : 'text-text-muted hover:text-text-main')}
                 >
-                  {isActive && (
-                    <motion.div 
+                  {active && (
+                    <motion.div
                       layoutId="nav-pill"
                       className="absolute inset-0 bg-accent-teal border-2 border-border shadow-[2px_2px_0px_0px_#111] -z-10"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
-                  <span className="mr-2">{item.icon}</span>
-                  <span className={isActive ? "text-white" : ""}>{item.name}</span>
+                  <Icon className="w-5 h-5 mr-2" />
+                  {name}
                 </Link>
               );
             })}
           </div>
 
-          {/* User Profile / Auth */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-3">
             {currentUser ? (
-              <div className="flex items-center space-x-3">
-                <span className="font-pixel text-sm hidden sm:inline-block">{currentUser.displayName?.split(' ')[0]}</span>
-                {currentUser.photoURL ? (
-                  <img src={currentUser.photoURL} alt="Profile" className="w-10 h-10 border-2 border-border shadow-brutal object-cover" />
-                ) : (
-                  <div className="w-10 h-10 bg-accent-blue border-2 border-border shadow-brutal flex items-center justify-center">
-                    <User className="w-6 h-6 text-text-main" strokeWidth={2.5} />
+              <div className="relative" ref={userRef}>
+                <button
+                  onClick={() => setUserOpen(!userOpen)}
+                  aria-expanded={userOpen}
+                  aria-haspopup="menu"
+                  className="flex items-center gap-2 border-2 border-border bg-surface-white shadow-brutal px-2 py-1.5 font-bold"
+                >
+                  {currentUser.photoURL ? (
+                    <img src={currentUser.photoURL} alt="" className="w-8 h-8 border-2 border-border object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <Avatar username={me?.username || '?'} size="w-8 h-8 text-sm" />
+                  )}
+                  <span className="hidden sm:inline max-w-[8rem] truncate">{me ? `@${me.username}` : '…'}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                {userOpen && (
+                  <div role="menu" className="absolute right-0 mt-2 w-52 bg-surface-white border-[3px] border-border shadow-brutal-lg py-1 z-50">
+                    {userLinks.map(({ name, path, icon: Icon }) => (
+                      <Link key={name} role="menuitem" to={path} className="flex items-center gap-2 px-4 py-2 font-bold hover:bg-accent-teal hover:text-white">
+                        <Icon className="w-4 h-4" /> {name}
+                      </Link>
+                    ))}
+                    <button role="menuitem" onClick={logout} className="w-full flex items-center gap-2 px-4 py-2 font-bold hover:bg-accent-red hover:text-white border-t-2 border-border">
+                      <LogOut className="w-4 h-4" /> Sign out
+                    </button>
                   </div>
                 )}
-                <button 
-                  onClick={logout}
-                  title="Sign Out"
-                  className="flex items-center justify-center bg-accent-red border-2 border-border shadow-brutal p-2 hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all focus:outline-none"
-                >
-                  <LogOut className="w-5 h-5 text-white" strokeWidth={2.5} />
-                </button>
               </div>
             ) : (
-              <button 
+              <button
                 onClick={loginWithGoogle}
-                className="flex items-center justify-center bg-accent-blue border-2 border-border shadow-brutal p-2 px-4 hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all focus:outline-none font-bold uppercase tracking-wider"
+                className="bg-accent-blue border-2 border-border shadow-brutal px-4 py-2 hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all font-bold uppercase tracking-wider"
               >
                 Sign In
               </button>
             )}
+            <button
+              className="lg:hidden border-2 border-border bg-surface-white shadow-brutal p-2"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
-
         </div>
       </div>
+
+      {menuOpen && (
+        <div className="lg:hidden border-t-[3px] border-border bg-surface-white">
+          {[...items, ...(currentUser ? userLinks : [])].map(({ name, path, icon: Icon }) => (
+            <Link
+              key={name}
+              to={path}
+              className={cn('flex items-center gap-3 px-5 py-3 font-bold border-b-2 border-border', isActive(path) && 'bg-accent-teal text-white')}
+            >
+              <Icon className="w-5 h-5" /> {name}
+            </Link>
+          ))}
+        </div>
+      )}
     </nav>
   );
 };

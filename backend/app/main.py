@@ -1,40 +1,73 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.routes import search, books, recommendations, library, author, user
-from app.database import db
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from fastapi import Depends, FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+from app import graph, mongo, sync_worker  # noqa: E402
+from app.database import db  # noqa: E402
+from app.deps import viewer_optional  # noqa: E402
+from app.routes import admin, catalog, chat, diary, lists, users  # noqa: E402
 
 app = FastAPI(
-    title="Book Recommendation API",
-    description="Graph-based book recommendation system using Neo4j",
-    version="1.0.0"
+    title="BookLog API",
+    description="BookLog: a social book diary and recommendation system "
+                "(PostgreSQL + Neo4j + MongoDB)",
+    version="2.0.0",
+    # every request identifies the viewer so PostgreSQL row-level security applies
+    dependencies=[Depends(viewer_optional)],
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev purposes, allow all
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
     db.connect()
+    mongo.ensure_indexes()
+    graph.ensure_constraints()
+    sync_worker.start()
+
 
 @app.on_event("shutdown")
-async def shutdown_event():
+def shutdown_event():
+    sync_worker.stop()
     db.close()
 
-# Include routers
-app.include_router(search.router)
-app.include_router(books.router)
-app.include_router(recommendations.router)
-app.include_router(library.router)
-app.include_router(author.router)
-app.include_router(user.router)
+
+for r in (catalog, diary, lists, users, admin, chat):
+    app.include_router(r.router)
 
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Book Recommendation API"}
+    return {"message": "Welcome to the BookLog API"}
+
+
+@app.get("/health")
+def health():
+    status = {"postgres": False, "neo4j": False, "mongodb": False}
+    try:
+        with db.cursor(system=True) as cur:
+            cur.execute("SELECT 1")
+        status["postgres"] = True
+    except Exception:
+        pass
+    try:
+        graph.run("RETURN 1")
+        status["neo4j"] = True
+    except graph.GraphUnavailable:
+        pass
+    try:
+        mongo.get_db().command("ping")
+        status["mongodb"] = True
+    except Exception:
+        pass
+    return status

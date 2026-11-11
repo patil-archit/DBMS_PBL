@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import NeoButton from '../components/NeoButton';
 import BookCard from '../components/BookCard';
 import { useAuth } from '../contexts/AuthContext';
-import { getPersonalizedRecommendations, getDbStats } from '../services/api';
+import GoalWidget from '../components/GoalWidget';
+import { getPersonalizedRecommendations, getDbStats, getTrending } from '../services/api';
 
 const HomePage = () => {
   const [query, setQuery] = useState('');
@@ -14,6 +15,11 @@ const HomePage = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [stats, setStats] = useState({ books_count: 0, authors_count: 0, categories_count: 0 });
+  const [trending, setTrending] = useState([]);
+
+  useEffect(() => {
+    getTrending(8).then(setTrending).catch(() => {});
+  }, []);
 
   useEffect(() => {
     getDbStats()
@@ -29,7 +35,7 @@ const HomePage = () => {
   useEffect(() => {
     if (currentUser) {
       setLoadingRecs(true);
-      getPersonalizedRecommendations(currentUser.uid)
+      getPersonalizedRecommendations()
         .then(data => {
           setRecommendations(data);
           setLoadingRecs(false);
@@ -82,12 +88,12 @@ const HomePage = () => {
           
           <motion.h1 variants={itemVariants} className="text-6xl sm:text-7xl lg:text-8xl font-black text-text-main leading-[1.1] mb-8">
             Discover books <br/>
-            through <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-red to-accent-teal" style={{ WebkitTextStroke: '2px #111', textStroke: '2px #111', color: 'transparent' }}>intelligent</span> <br/>
-            <span className="font-pixel text-7xl sm:text-8xl lg:text-9xl text-accent-blue bg-surface-white border-[4px] border-border shadow-brutal px-6 inline-block mt-4 transform -rotate-2">graph traversal</span>
+            through <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-red to-accent-teal" style={{ WebkitTextStroke: '2px #111', textStroke: '2px #111', color: 'transparent' }}>your own</span> <br/>
+            <span className="font-pixel text-7xl sm:text-8xl lg:text-9xl text-accent-blue bg-surface-white border-[4px] border-border shadow-brutal px-6 inline-block mt-4 transform -rotate-2">reading diary</span>
           </motion.h1>
  
           <motion.p variants={itemVariants} className="text-xl md:text-2xl text-text-muted mb-12 max-w-2xl font-medium leading-relaxed">
-            Stop relying on generic top-10 lists. BiblioGraph maps deep semantic connections between authors, genres, and themes to find exactly what you should read next.
+            Stop relying on generic top-10 lists. BookLog keeps a diary of what you read and uses your ratings, favourite authors and friends to find exactly what you should read next.
           </motion.p>
  
           <motion.form variants={itemVariants} onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4 max-w-2xl">
@@ -119,8 +125,11 @@ const HomePage = () => {
                 Recommended For You
               </h2>
               <p className="text-lg text-text-muted mt-2 font-medium">
-                Based on graph intersections of your library & authors you follow.
+                From your ratings, readers with similar taste, people and authors you follow, your favourite genres and what's trending. Each pick says why.
               </p>
+            </div>
+            <div className="mb-10 max-w-xl">
+              <GoalWidget />
             </div>
             
             {loadingRecs ? (
@@ -129,17 +138,33 @@ const HomePage = () => {
               </div>
             ) : recommendations.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {recommendations.slice(0, 8).map((book, i) => (
-                  <BookCard 
-                    key={book.title} 
-                    book={book} 
-                    colorScheme={['teal', 'red', 'blue', 'white'][i % 4]} 
+                {recommendations.slice(0, 12).map((book, i) => (
+                  <BookCard
+                    key={book.book_id}
+                    book={book}
+                    source={`recommendation:${book.source}`}
+                    colorScheme={['teal', 'red', 'blue', 'white'][i % 4]}
                   />
                 ))}
               </div>
             ) : (
               <p className="text-text-muted font-pixel text-center py-8">No recommendations found yet.</p>
             )}
+          </div>
+        </section>
+      )}
+
+      {/* Trending (MongoDB activity) */}
+      {trending.length > 0 && (
+        <section className="border-t-[3px] border-border py-16 bg-surface-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-4xl font-black uppercase tracking-tighter text-text-main mb-2">Trending this week</h2>
+            <p className="text-lg text-text-muted mb-10 font-medium">Most viewed and clicked books on BookLog in the last 7 days.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
+              {trending.map((book, i) => (
+                <BookCard key={book.book_id} book={book} source="trending" colorScheme={['white', 'blue', 'teal', 'red'][i % 4]} />
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -156,7 +181,7 @@ const HomePage = () => {
               </div>
               <h3 className="text-3xl font-bold mb-4">Deep Exploration</h3>
               <p className="text-lg text-text-muted font-medium">
-                Navigate our custom Neo4j knowledge graph spanning {stats.books_count > 0 ? `${stats.books_count} books` : 'our books'} across {stats.authors_count > 0 ? `${stats.authors_count} authors` : 'our authors'} and {stats.categories_count > 0 ? `${stats.categories_count} genres` : 'our genres'} to uncover hidden gems you won't find anywhere else.
+                Browse a catalogue of {stats.books_count > 0 ? `${stats.books_count} books` : 'our books'} across {stats.authors_count > 0 ? `${stats.authors_count} authors` : 'our authors'} and {stats.categories_count > 0 ? `${stats.categories_count} genres` : 'our genres'} to uncover hidden gems you won't find anywhere else.
               </p>
             </div>
 
@@ -165,8 +190,8 @@ const HomePage = () => {
               <div className="w-16 h-16 bg-accent-red border-[3px] border-border shadow-brutal flex items-center justify-center mb-8 group-hover:-translate-y-2 transition-transform">
                 <Share2 className="w-8 h-8 text-white" strokeWidth={2.5} />
               </div>
-              <h3 className="text-3xl font-bold mb-4">Explainable AI</h3>
-              <p className="text-lg text-text-muted font-medium">Understand exactly why a book was recommended. We show you the precise graph paths and category overlaps connecting your favorites.</p>
+              <h3 className="text-3xl font-bold mb-4">Explainable Picks</h3>
+              <p className="text-lg text-text-muted font-medium">Understand exactly why a book was recommended: shared genres, ratings, popularity and which of your friends have read it.</p>
             </div>
 
             {/* Feature 3 */}
@@ -174,8 +199,8 @@ const HomePage = () => {
               <div className="w-16 h-16 bg-accent-teal border-[3px] border-border shadow-brutal flex items-center justify-center mb-8 group-hover:-translate-y-2 transition-transform">
                 <BookOpen className="w-8 h-8 text-text-main" strokeWidth={2.5} />
               </div>
-              <h3 className="text-3xl font-bold mb-4">Visual Library</h3>
-              <p className="text-lg text-text-muted font-medium">Immerse yourself in our interactive 2D node visualization. See how your entire reading history forms interconnected clusters.</p>
+              <h3 className="text-3xl font-bold mb-4">Reading Diary</h3>
+              <p className="text-lg text-text-muted font-medium">Log every book you finish with a rating and a review, and compare your library with your friends.</p>
             </div>
 
           </div>

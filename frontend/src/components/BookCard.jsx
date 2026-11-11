@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { Star, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from './NeoButton';
+import { logClick } from '../services/api';
 
-const BookCard = ({ book, showScore = false, colorScheme = 'white' }) => {
+const BookCard = ({ book, showScore = false, colorScheme = 'white', source }) => {
   const schemes = {
     white: "bg-surface-white",
     red: "bg-accent-red text-white",
@@ -15,7 +16,11 @@ const BookCard = ({ book, showScore = false, colorScheme = 'white' }) => {
   const isDark = colorScheme === 'red' || colorScheme === 'navy';
 
   return (
-    <Link to={`/book/${encodeURIComponent(book.title)}`} className="block group">
+    <Link
+      to={`/book/${encodeURIComponent(book.title)}`}
+      className="block group h-full"
+      onClick={() => book.book_id && source && logClick(book.book_id, source)}
+    >
       <motion.div 
         className={cn(
           "h-full flex flex-col border-brutal transition-all duration-300 relative",
@@ -59,6 +64,11 @@ const BookCard = ({ book, showScore = false, colorScheme = 'white' }) => {
             <p className="text-text-muted text-sm font-medium line-clamp-1 uppercase tracking-tight">
               {book.authors?.length > 0 ? book.authors.join(', ') : 'Unknown Author'}
             </p>
+            {book.reason && (
+              <p className="mt-2 text-xs font-bold bg-accent-blue/20 border-2 border-border px-2 py-1 line-clamp-2" title={book.reason}>
+                {book.reason}
+              </p>
+            )}
           </div>
         </div>
 

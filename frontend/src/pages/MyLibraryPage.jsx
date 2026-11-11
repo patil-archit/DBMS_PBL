@@ -1,132 +1,128 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BookMarked, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserLibrary, getUserFollowedAuthors } from '../services/api';
 import BookCard from '../components/BookCard';
-import { BookMarked, Loader2 } from 'lucide-react';
+import DiaryList from '../components/DiaryList';
+import GoalWidget from '../components/GoalWidget';
+import ListCard from '../components/ListCard';
 import NeoButton from '../components/NeoButton';
+import { Empty, Page, PageTitle, Spinner, Tabs } from '../components/ui';
+import { getMyLists, getUserDiary, getUserFollowedAuthors, getUserShelves } from '../services/api';
 
 const MyLibraryPage = () => {
-  const { currentUser, loginWithGoogle } = useAuth();
-  const [books, setBooks] = useState([]);
+  const { currentUser, me, loginWithGoogle, loading: authLoading } = useAuth();
+  const [tab, setTab] = useState('diary');
+  const [diary, setDiary] = useState(null);
+  const [shelves, setShelves] = useState({ want_to_read: [], currently_reading: [] });
+  const [lists, setLists] = useState([]);
   const [authors, setAuthors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+  const load = useCallback(async () => {
+    if (!me) return;
+    const [d, s, l, a] = await Promise.all([
+      getUserDiary(me.username), getUserShelves(me.username), getMyLists(), getUserFollowedAuthors(),
+    ]);
+    setDiary(d);
+    setShelves(s);
+    setLists(l);
+    setAuthors(a);
+  }, [me]);
 
   useEffect(() => {
-    const fetchLibrary = async () => {
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        const [libraryBooks, followedAuthors] = await Promise.all([
-          getUserLibrary(currentUser.uid),
-          getUserFollowedAuthors(currentUser.uid)
-        ]);
-        setBooks(libraryBooks);
-        setAuthors(followedAuthors);
-      } catch (err) {
-        setError('Failed to load library');
-      } finally {
-        setLoading(false);
-      }
-    };
+    load().catch(console.error);
+  }, [load]);
 
-    fetchLibrary();
-  }, [currentUser]);
+  if (authLoading) return <Spinner />;
 
   if (!currentUser) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center justify-center min-h-[60vh]">
+      <Page className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <BookMarked className="w-24 h-24 mb-6 text-accent-blue" />
-        <h1 className="text-4xl md:text-5xl font-black text-center mb-6 uppercase tracking-tight text-text-main">
-          Your Personal Library
-        </h1>
-        <p className="text-xl text-text-muted mb-8 text-center max-w-2xl font-medium">
-          Sign in to save books, keep track of your reading list, and get personalized recommendations.
+        <h1 className="text-4xl md:text-5xl font-black mb-6 uppercase tracking-tight">Your reading diary</h1>
+        <p className="text-xl text-text-muted mb-8 max-w-2xl font-medium">
+          Sign in to log books with ratings and reviews, keep shelves, make lists and set a yearly reading goal.
         </p>
-        <NeoButton onClick={loginWithGoogle} variant="primary" size="lg" className="w-full sm:w-auto text-lg">
-          Sign In with Google
-        </NeoButton>
-      </div>
+        <NeoButton onClick={loginWithGoogle} variant="primary" size="lg">Sign in with Google</NeoButton>
+      </Page>
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-12 border-b-4 border-border pb-6 flex items-center justify-between">
-        <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tighter text-text-main flex items-center">
-          <BookMarked className="w-12 h-12 mr-4 text-accent-blue" strokeWidth={3} />
-          My Library
-        </h1>
-        <div className="hidden sm:block text-right">
-          <p className="font-pixel text-text-muted text-sm uppercase tracking-widest">
-            {books.length} Books Saved
-          </p>
-        </div>
+  if (!diary) return <Spinner label="Loading your books…" />;
+
+  const books = (items) =>
+    items.length ? (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+        {items.map((b, i) => <BookCard key={b.book_id} book={b} colorScheme={['white', 'teal', 'blue', 'red'][i % 4]} />)}
       </div>
+    ) : (
+      <Empty title="Nothing here yet">Use the shelf buttons on any book page.</Empty>
+    );
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-24">
-          <Loader2 className="w-16 h-16 animate-spin text-accent-red mb-4" />
-          <p className="font-pixel text-xl animate-pulse">Loading collection...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-accent-red text-white p-6 border-brutal shadow-brutal font-bold text-lg">
-          Error: {error}
-        </div>
-      ) : books.length === 0 ? (
-        <div className="bg-surface-white border-[3px] border-border shadow-brutal p-12 text-center">
-          <h2 className="text-3xl font-black mb-4">Your Library is Empty</h2>
-          <p className="text-lg text-text-muted mb-8">Start exploring and save books you're interested in.</p>
-          <NeoButton onClick={() => window.location.href='/search'} variant="secondary" size="lg">
-            Explore Books
-          </NeoButton>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {books.map((book, i) => (
-            <BookCard 
-              key={book.title} 
-              book={book} 
-              colorScheme={['white', 'red', 'blue', 'teal'][i % 4]} 
-            />
-          ))}
-        </div>
-      )}
+  return (
+    <Page>
+      <PageTitle
+        mark="_"
+        right={me && <Link to={`/u/${me.username}`} className="font-bold underline">View public profile</Link>}
+      >
+        My Books
+      </PageTitle>
 
-      {/* Authors Section */}
-      {authors.length > 0 && (
-        <div className="mt-16">
-          <div className="mb-8 border-b-4 border-border pb-4">
-            <h2 className="text-4xl font-black uppercase tracking-tighter text-text-main">
-              Authors You Follow
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {authors.map((author, i) => (
-              <div 
-                key={author.name} 
-                className="bg-surface-white border-[3px] border-border shadow-brutal p-6 flex items-center gap-6 cursor-pointer hover:-translate-y-1 transition-transform"
-                onClick={() => window.location.href = `/author/${encodeURIComponent(author.name)}`}
-              >
-                <img 
-                  src={author.image_url} 
-                  alt={author.name} 
-                  className="w-20 h-20 rounded-full border-2 border-border object-cover bg-bg-base"
-                />
-                <div>
-                  <h3 className="font-bold text-xl">{author.name}</h3>
-                  <p className="font-pixel text-text-muted text-xs uppercase mt-2">{author.book_count} Books</p>
-                </div>
+      <div className="grid lg:grid-cols-[1fr_320px] gap-10">
+        <div className="min-w-0">
+          <Tabs
+            active={tab}
+            onChange={setTab}
+            tabs={[
+              { id: 'diary', label: 'Diary', count: diary.length },
+              { id: 'reading', label: 'Reading now', count: shelves.currently_reading.length },
+              { id: 'want', label: 'Want to read', count: shelves.want_to_read.length },
+              { id: 'lists', label: 'Lists', count: lists.length },
+              { id: 'authors', label: 'Authors', count: authors.length },
+            ]}
+          />
+          {tab === 'diary' && <DiaryList entries={diary} editable onChanged={load} emptyText="Open any book and press “Log / Review”." />}
+          {tab === 'reading' && books(shelves.currently_reading)}
+          {tab === 'want' && books(shelves.want_to_read)}
+          {tab === 'lists' && (
+            <>
+              <div className="mb-6">
+                <Link to="/lists/new"><NeoButton variant="navy" size="sm"><Plus className="w-4 h-4 mr-1" /> New list</NeoButton></Link>
               </div>
-            ))}
-          </div>
+              {lists.length ? (
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">{lists.map((l) => <ListCard key={l.list_id} list={l} />)}</div>
+              ) : (
+                <Empty title="No lists yet">Create one, or use “Add to list” on a book page.</Empty>
+              )}
+            </>
+          )}
+          {tab === 'authors' && (
+            authors.length ? (
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {authors.map((a) => (
+                  <Link key={a.name} to={`/author/${encodeURIComponent(a.name)}`} className="flex items-center gap-4 bg-surface-white border-[3px] border-border shadow-brutal p-4 hover:shadow-brutal-hover">
+                    {a.image_url ? (
+                      <img src={a.image_url} alt={a.name} className="w-16 h-16 object-cover border-2 border-border" />
+                    ) : (
+                      <div className="w-16 h-16 bg-accent-blue border-2 border-border" />
+                    )}
+                    <div>
+                      <p className="font-black text-lg">{a.name}</p>
+                      <p className="font-pixel text-lg text-text-muted">{a.book_count} books</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Empty title="No followed authors">Follow authors from their author page.</Empty>
+            )
+          )}
         </div>
-      )}
-    </div>
+        <aside className="space-y-6">
+          <GoalWidget />
+        </aside>
+      </div>
+    </Page>
   );
 };
 

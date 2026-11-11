@@ -4,12 +4,30 @@ import { Search, Loader2, AlertCircle, BookOpen, Users, Folder, UserCheck, Heart
 import { motion, AnimatePresence } from 'framer-motion';
 import BookCard from '../components/BookCard';
 import NeoButton from '../components/NeoButton';
-import { searchBooks, followAuthor, unfollowAuthor } from '../services/api';
+import { searchBooks, followAuthor, unfollowAuthor, getGenres, getLanguages } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
+  const genreFilter = searchParams.get('genre') || '';
+  const languageFilter = searchParams.get('language') || '';
+  const ratingFilter = searchParams.get('min_rating') || '';
+  const hasFilters = !!(genreFilter || languageFilter || ratingFilter);
+  const [genreOptions, setGenreOptions] = useState([]);
+  const [languageOptions, setLanguageOptions] = useState([]);
+
+  useEffect(() => {
+    getGenres().then(setGenreOptions).catch(() => {});
+    getLanguages().then(setLanguageOptions).catch(() => {});
+  }, []);
+
+  const setFilter = (key, value) => {
+    const next = Object.fromEntries(searchParams.entries());
+    if (value) next[key] = value;
+    else delete next[key];
+    setSearchParams(next);
+  };
   
   const { currentUser, loginWithGoogle } = useAuth();
   const [query, setQuery] = useState(initialQuery);
@@ -21,23 +39,28 @@ const SearchPage = () => {
   const [actionLoading, setActionLoading] = useState({});
 
   useEffect(() => {
-    if (initialQuery) {
+    if (initialQuery || hasFilters) {
       performSearch(initialQuery);
     }
-  }, [initialQuery, currentUser]); // Re-search when user changes to fetch correct follow state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery, genreFilter, languageFilter, ratingFilter, currentUser]); // Re-search when user changes to fetch correct follow state
 
   const performSearch = async (searchQuery) => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() && !hasFilters) return;
     
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
     
     try {
-      const data = await searchBooks(searchQuery);
+      const filters = {};
+      if (genreFilter) filters.genre = genreFilter;
+      if (languageFilter) filters.language = languageFilter;
+      if (ratingFilter) filters.min_rating = ratingFilter;
+      const data = await searchBooks(searchQuery, filters);
       setResults(data);
     } catch (err) {
-      setError('Failed to fetch from the graph. Please try again.');
+      setError('Search failed. Please try again.');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -46,9 +69,9 @@ const SearchPage = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (query.trim() && query !== initialQuery) {
-      setSearchParams({ q: query });
-    } else if (query === initialQuery) {
+    if (query !== initialQuery) {
+      setFilter('q', query.trim());
+    } else {
       performSearch(query);
     }
   };
@@ -90,8 +113,8 @@ const SearchPage = () => {
   };
 
   const handleGenreClick = (genreName) => {
-    setQuery(genreName);
-    setSearchParams({ q: genreName });
+    setQuery('');
+    setSearchParams({ genre: genreName });
   };
 
   const colorPalettes = ['white', 'red', 'blue', 'teal'];
@@ -115,7 +138,7 @@ const SearchPage = () => {
               <input
                 type="text"
                 className="w-full pl-16 pr-6 py-5 bg-surface-white border-[3px] border-border shadow-brutal text-xl md:text-2xl font-bold placeholder-text-muted focus:outline-none focus:shadow-brutal-hover focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
-                placeholder="Search books, authors, or genres (with Boyer-Moore)..."
+                placeholder="Search books, authors, genres or ISBN..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -124,6 +147,47 @@ const SearchPage = () => {
               {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Search'}
             </NeoButton>
           </form>
+
+          {/* Filters */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="font-pixel text-xl uppercase tracking-widest">Filter:</span>
+            <select
+              aria-label="Genre"
+              value={genreFilter}
+              onChange={(e) => setFilter('genre', e.target.value)}
+              className="px-3 py-2 border-[3px] border-border bg-surface-white font-bold shadow-brutal max-w-[14rem]"
+            >
+              <option value="">All genres</option>
+              {genreOptions.map((g) => (
+                <option key={g.genre_id} value={g.name}>{g.name} ({g.book_count})</option>
+              ))}
+            </select>
+            <select
+              aria-label="Language"
+              value={languageFilter}
+              onChange={(e) => setFilter('language', e.target.value)}
+              className="px-3 py-2 border-[3px] border-border bg-surface-white font-bold shadow-brutal"
+            >
+              <option value="">Any language</option>
+              {languageOptions.map((l) => (
+                <option key={l.language} value={l.language}>{l.language.toUpperCase()} ({l.book_count})</option>
+              ))}
+            </select>
+            <select
+              aria-label="Minimum rating"
+              value={ratingFilter}
+              onChange={(e) => setFilter('min_rating', e.target.value)}
+              className="px-3 py-2 border-[3px] border-border bg-surface-white font-bold shadow-brutal"
+            >
+              <option value="">Any rating</option>
+              {[4.5, 4, 3.5, 3].map((r) => <option key={r} value={r}>{r}+ stars</option>)}
+            </select>
+            {hasFilters && (
+              <button className="font-bold underline" onClick={() => setSearchParams(initialQuery ? { q: initialQuery } : {})}>
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Status Messages */}
@@ -149,9 +213,9 @@ const SearchPage = () => {
               animate={{ opacity: 1 }}
               className="bg-surface-white border-[3px] border-border border-dashed p-16 text-center shadow-brutal"
             >
-              <p className="font-pixel text-2xl text-text-muted tracking-widest uppercase">0 Graph Matches</p>
-              <p className="text-xl font-bold mt-4">No matching books, authors, or genres found for "{initialQuery}".</p>
-              <p className="text-md text-text-muted mt-2">Try spelling it slightly differently, our Boyer-Moore algorithm supports up to 2 mismatches!</p>
+              <p className="font-pixel text-2xl text-text-muted tracking-widest uppercase">0 Matches</p>
+              <p className="text-xl font-bold mt-4">No matching books, authors, or genres found{initialQuery ? ` for "${initialQuery}"` : ' with these filters'}.</p>
+              <p className="text-md text-text-muted mt-2">Check the spelling or try fewer words. Small typos are handled automatically.</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -245,9 +309,10 @@ const SearchPage = () => {
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 gap-y-12">
                       {results.books.map((book, idx) => (
-                        <BookCard 
-                          key={idx} 
-                          book={book} 
+                        <BookCard
+                          key={book.book_id}
+                          book={book}
+                          source="search"
                           colorScheme={colorPalettes[idx % colorPalettes.length]} 
                         />
                       ))}
@@ -261,9 +326,10 @@ const SearchPage = () => {
             {activeTab === 'books' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 gap-y-12">
                 {results.books.map((book, idx) => (
-                  <BookCard 
-                    key={idx} 
-                    book={book} 
+                  <BookCard
+                    key={book.book_id}
+                    book={book}
+                    source="search"
                     colorScheme={colorPalettes[idx % colorPalettes.length]} 
                   />
                 ))}
@@ -320,7 +386,7 @@ const SearchPage = () => {
 const AuthorListItem = ({ author, onFollowToggle, actionLoading, currentUser }) => {
   const bioSnippet = author.description 
     ? (author.description.length > 140 ? author.description.slice(0, 140) + "..." : author.description)
-    : "No biography currently available in the graph.";
+    : "No biography available yet.";
 
   return (
     <div className="bg-surface-white border-[3px] border-border p-6 shadow-brutal hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex flex-col sm:flex-row gap-6 relative overflow-hidden">
@@ -388,12 +454,6 @@ const AuthorListItem = ({ author, onFollowToggle, actionLoading, currentUser }) 
         </div>
       </div>
       
-      {/* BMH score indicator */}
-      {author.score > 0 && (
-        <div className="absolute top-2 right-2 bg-accent-navy text-white text-[10px] font-pixel border border-border px-1">
-          BMH: {author.score}
-        </div>
-      )}
     </div>
   );
 };

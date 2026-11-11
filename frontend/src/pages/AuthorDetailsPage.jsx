@@ -31,7 +31,7 @@ const AuthorDetailsPage = () => {
       setAuthor(data);
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch author details from the graph database.");
+      setError("Failed to fetch author details.");
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +68,7 @@ const AuthorDetailsPage = () => {
     return (
       <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center">
         <Loader2 className="w-16 h-16 animate-spin text-accent-teal" strokeWidth={3} />
-        <p className="mt-4 font-pixel text-2xl tracking-widest uppercase">Traversing Graph Nodes...</p>
+        <p className="mt-4 font-pixel text-2xl tracking-widest uppercase">Loading Author...</p>
       </div>
     );
   }
@@ -78,7 +78,7 @@ const AuthorDetailsPage = () => {
       <div className="min-h-screen bg-bg-base py-16 px-4">
         <div className="max-w-3xl mx-auto bg-accent-red border-[3px] border-border p-8 shadow-brutal text-white">
           <AlertCircle className="w-12 h-12 mb-4" strokeWidth={2.5} />
-          <h2 className="font-pixel text-2xl tracking-widest uppercase mb-2">Traversal Error</h2>
+          <h2 className="font-pixel text-2xl tracking-widest uppercase mb-2">Error</h2>
           <p className="text-xl font-bold mb-6">{error || "Author not found in database Catalog."}</p>
           <NeoButton variant="white" onClick={() => navigate('/search')}>
             Return to Search
@@ -124,7 +124,7 @@ const AuthorDetailsPage = () => {
               </div>
             )}
             <div className="absolute bottom-2 left-2 bg-accent-navy text-white font-pixel text-xs border border-border px-2 py-0.5">
-              GRAPH ID: {author.name.replace(/\s+/g, "_").toUpperCase()}
+              AUTHOR // {author.name.replace(/\s+/g, "_").toUpperCase()}
             </div>
           </div>
 
@@ -165,16 +165,16 @@ const AuthorDetailsPage = () => {
               
               <h3 className="font-pixel text-xl tracking-widest text-accent-teal uppercase mb-2">Biography</h3>
               <p className="text-lg text-text-main leading-relaxed font-semibold max-w-4xl">
-                {author.description || "No detailed biography currently exists in the graph database. Dynamic profiles will be enriched as the graph catalog scales."}
+                {author.description || "No biography available yet."}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Graph analytics dashboard */}
+        {/* Author stats dashboard */}
         <div className="mb-16">
           <h2 className="text-4xl font-black text-text-main mb-8 flex items-center gap-2">
-            <span className="font-pixel text-accent-blue">#</span> Graph Connections & Analytics
+            <span className="font-pixel text-accent-blue">#</span> Author Stats
           </h2>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -259,14 +259,14 @@ const AuthorDetailsPage = () => {
               </div>
               
               <div className="bg-bg-base border-2 border-border p-4 text-xs font-semibold leading-relaxed mt-6">
-                <strong>Graph path matched:</strong> <br/>
+                <strong>Matched by:</strong> <br/>
                 <code className="text-accent-teal font-pixel font-bold">
                   (Author)-[:WRITTEN_BY]-(Book)-[:HAS_CATEGORY]-(Category)
                 </code>
               </div>
             </div>
 
-            {/* PANEL 3: Co-authors Graph Connections */}
+            {/* PANEL 3: Related authors */}
             <div className="bg-surface-white border-[3px] border-border p-6 shadow-brutal flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-6">
@@ -309,7 +309,7 @@ const AuthorDetailsPage = () => {
               </div>
               
               <div className="text-xs font-pixel text-text-muted mt-6">
-                Traversed: Category overlap algorithms
+                Based on shared genres
               </div>
             </div>
             
