@@ -1,339 +1,163 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertCircle, Heart, UserCheck, BookOpen, Star, Award, FileText, Users, Sparkles } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowLeft, Check, Plus } from 'lucide-react';
 import BookCard from '../components/BookCard';
 import NeoButton from '../components/NeoButton';
-import { getAuthor, followAuthor, unfollowAuthor } from '../services/api';
+import { CountUp, EASE, FadeIn, RevealText, SectionTitle, Spinner } from '../components/ui';
+import { followAuthor, getAuthor, unfollowAuthor } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const AuthorDetailsPage = () => {
   const { name } = useParams();
   const navigate = useNavigate();
   const { currentUser, loginWithGoogle } = useAuth();
-  
   const [author, setAuthor] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [followLoading, setFollowLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [more, setMore] = useState(false);
 
   useEffect(() => {
-    fetchAuthorDetails();
-    setImgError(false); // Reset image error on profile change
-  }, [name, currentUser]); // Refetch when name or user auth state changes
-
-  const fetchAuthorDetails = async () => {
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
+    setImgError(false);
+    getAuthor(name)
+      .then(setAuthor)
+      .catch(() => setError('Author not found.'))
+      .finally(() => setLoading(false));
+  }, [name, currentUser]);
+
+  const toggleFollow = async () => {
+    if (!currentUser) { loginWithGoogle(); return; }
+    setBusy(true);
     try {
-      const data = await getAuthor(name);
-      setAuthor(data);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to fetch author details.");
+      await (author.is_followed ? unfollowAuthor(author.name) : followAuthor(author.name));
+      setAuthor((a) => ({ ...a, is_followed: !a.is_followed }));
     } finally {
-      setIsLoading(false);
+      setBusy(false);
     }
   };
 
-  const handleFollowToggle = async () => {
-    if (!currentUser) {
-      try {
-        await loginWithGoogle();
-        return;
-      } catch (err) {
-        console.error("Login failed:", err);
-        return;
-      }
-    }
-
-    setFollowLoading(true);
-    try {
-      if (author.is_followed) {
-        await unfollowAuthor(author.name);
-        setAuthor(prev => ({ ...prev, is_followed: false }));
-      } else {
-        await followAuthor(author.name);
-        setAuthor(prev => ({ ...prev, is_followed: true }));
-      }
-    } catch (err) {
-      console.error("Failed to toggle follow status:", err);
-    } finally {
-      setFollowLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center">
-        <Loader2 className="w-16 h-16 animate-spin text-accent-teal" strokeWidth={3} />
-        <p className="mt-4 font-pixel text-2xl tracking-widest uppercase">Loading Author...</p>
-      </div>
-    );
-  }
-
+  if (loading) return <Spinner label="Finding the author" />;
   if (error || !author) {
     return (
-      <div className="min-h-screen bg-bg-base py-16 px-4">
-        <div className="max-w-3xl mx-auto bg-accent-red border-[3px] border-border p-8 shadow-brutal text-white">
-          <AlertCircle className="w-12 h-12 mb-4" strokeWidth={2.5} />
-          <h2 className="font-pixel text-2xl tracking-widest uppercase mb-2">Error</h2>
-          <p className="text-xl font-bold mb-6">{error || "Author not found in database Catalog."}</p>
-          <NeoButton variant="white" onClick={() => navigate('/search')}>
-            Return to Search
-          </NeoButton>
-        </div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <p className="font-serif italic text-5xl mb-8">{error}</p>
+        <NeoButton onClick={() => navigate('/search')}>Back to search</NeoButton>
       </div>
     );
   }
 
-  const colorPalettes = ['white', 'red', 'blue', 'teal'];
+  const s = author.stats;
+  const [first, ...rest] = author.name.split(' ');
+  const bio = author.description || 'No biography available yet.';
 
   return (
-    <div className="min-h-screen bg-bg-base py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Back navigation */}
-        <button 
-          onClick={() => navigate(-1)}
-          className="mb-8 flex items-center gap-2 font-pixel text-xl tracking-wider text-text-main hover:text-accent-teal transition-all group"
-        >
-          <ArrowLeft className="w-6 h-6 border-2 border-border p-0.5 bg-surface-white group-hover:bg-accent-teal group-hover:text-white transition-colors" strokeWidth={3} />
-          <span>Go Back</span>
+    <div className="max-w-[1400px] mx-auto px-5 sm:px-8 lg:px-10 pt-4 pb-24">
+      <div className="flex items-center justify-between border-t border-border pt-3 mb-10">
+        <button onClick={() => navigate(-1)} className="label !text-text-main flex items-center gap-1.5 group">
+          <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" /> Back
         </button>
+        <span className="label">( Author ) {s.total_books} books in the catalogue</span>
+      </div>
 
-        {/* Profile Hero Section */}
-        <div className="bg-surface-white border-[3px] border-border p-8 md:p-12 shadow-brutal-lg mb-16 flex flex-col md:flex-row gap-10 items-start relative overflow-hidden">
-          
-          {/* Decorative Corner Block */}
-          <div className="absolute top-0 right-0 w-24 h-24 bg-accent-teal/10 -z-0 translate-x-12 -translate-y-12 rotate-45 border-b-[3px] border-border"></div>
-
-          {/* Portrait frame */}
-          <div className="w-full md:w-64 lg:w-72 aspect-square border-[3px] border-border bg-bg-base flex-shrink-0 shadow-brutal overflow-hidden relative group">
+      <section className="grid grid-cols-12 gap-6 lg:gap-10 mb-24 items-end">
+        <div className="col-span-12 md:col-span-4">
+          <motion.div
+            initial={{ clipPath: 'inset(100% 0 0 0)' }}
+            animate={{ clipPath: 'inset(0% 0 0 0)' }}
+            transition={{ duration: 1.2, ease: EASE }}
+            className="aspect-[4/5] rounded-[4px] overflow-hidden bg-text-main max-w-[380px]"
+          >
             {author.image_url && !imgError ? (
-              <img 
-                src={author.image_url} 
-                alt={author.name} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              <motion.img
+                initial={{ scale: 1.3 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 1.6, ease: EASE }}
+                src={author.image_url}
+                alt={author.name}
                 onError={() => setImgError(true)}
+                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-[filter] duration-700"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-accent-teal/15 font-pixel text-7xl text-accent-teal">
-                {author.name.charAt(0)}
-              </div>
+              <span className="w-full h-full flex items-center justify-center font-serif italic text-[10rem] text-bg-base">{author.name[0]}</span>
             )}
-            <div className="absolute bottom-2 left-2 bg-accent-navy text-white font-pixel text-xs border border-border px-2 py-0.5">
-              AUTHOR // {author.name.replace(/\s+/g, "_").toUpperCase()}
-            </div>
-          </div>
-
-          {/* Details header */}
-          <div className="flex-grow flex flex-col justify-between h-full z-10">
-            <div>
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b-2 border-border">
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-text-main tracking-tight">
-                  {author.name}
-                </h1>
-                
-                {/* Follow Button */}
-                <button
-                  disabled={followLoading}
-                  onClick={handleFollowToggle}
-                  className={`flex items-center gap-2 border-[3px] border-border px-6 py-3 font-bold text-lg shadow-brutal hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer ${
-                    author.is_followed 
-                      ? 'bg-accent-teal text-white hover:bg-accent-red hover:text-white hover:shadow-brutal' // turns to unfollow/red on hover
-                      : 'bg-surface-white text-text-main hover:bg-accent-teal/10'
-                  }`}
-                  title={author.is_followed ? 'Click to Unfollow' : 'Click to Follow'}
-                >
-                  {followLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : author.is_followed ? (
-                    <>
-                      <UserCheck className="w-5 h-5" />
-                      <span>Followed</span>
-                    </>
-                  ) : (
-                    <>
-                      <Heart className="w-5 h-5" />
-                      <span>{currentUser ? 'Follow Author' : 'Login to Follow'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              
-              <h3 className="font-pixel text-xl tracking-widest text-accent-teal uppercase mb-2">Biography</h3>
-              <p className="text-lg text-text-main leading-relaxed font-semibold max-w-4xl">
-                {author.description || "No biography available yet."}
-              </p>
-            </div>
+          </motion.div>
+        </div>
+        <div className="col-span-12 md:col-span-8">
+          <RevealText as="h1" delay={0.2} className="font-wide font-medium text-[clamp(2.6rem,8vw,8rem)] leading-[0.9] tracking-[-0.03em]">
+            <span>{first}</span>
+            {rest.length > 0 && <span className="font-serif italic normal-case tracking-[-0.01em] text-accent-red">{rest.join(' ')}</span>}
+          </RevealText>
+          <div className="flex flex-wrap items-center gap-3 mt-8">
+            <NeoButton onClick={toggleFollow} disabled={busy} variant={author.is_followed ? 'secondary' : 'primary'}>
+              {author.is_followed ? <Check className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {author.is_followed ? 'Following' : currentUser ? 'Follow author' : 'Sign in to follow'}
+            </NeoButton>
+            <span className="label max-w-[16rem]">Followed authors feed your recommendations.</span>
           </div>
         </div>
+      </section>
 
-        {/* Author stats dashboard */}
-        <div className="mb-16">
-          <h2 className="text-4xl font-black text-text-main mb-8 flex items-center gap-2">
-            <span className="font-pixel text-accent-blue">#</span> Author Stats
-          </h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* PANEL 1: Key Metrics */}
-            <div className="bg-surface-white border-[3px] border-border p-6 shadow-brutal flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-6">
-                  <h3 className="text-2xl font-black flex items-center gap-2">
-                    <Sparkles className="w-6 h-6 text-accent-red" />
-                    <span>Catalog Stats</span>
-                  </h3>
-                  <span className="font-pixel text-sm bg-accent-red/10 border border-border px-2">V1.0</span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-bg-base border-2 border-border p-4 shadow-brutal-hover">
-                    <BookOpen className="w-6 h-6 text-accent-red mb-2" />
-                    <div className="text-3xl font-black">{author.stats.total_books}</div>
-                    <div className="text-xs text-text-muted font-bold uppercase mt-1">Books Written</div>
-                  </div>
-                  
-                  <div className="bg-bg-base border-2 border-border p-4 shadow-brutal-hover">
-                    <Star className="w-6 h-6 text-accent-teal mb-2" fill="currentColor" />
-                    <div className="text-3xl font-black">{author.stats.avg_rating}</div>
-                    <div className="text-xs text-text-muted font-bold uppercase mt-1">Average Rating</div>
-                  </div>
-                  
-                  <div className="bg-bg-base border-2 border-border p-4 shadow-brutal-hover">
-                    <Award className="w-6 h-6 text-accent-blue mb-2" />
-                    <div className="text-2xl font-black">
-                      {author.stats.total_ratings >= 1000 
-                        ? `${(author.stats.total_ratings / 1000).toFixed(1)}k` 
-                        : author.stats.total_ratings}
-                    </div>
-                    <div className="text-xs text-text-muted font-bold uppercase mt-1">Global Readers</div>
-                  </div>
-                  
-                  <div className="bg-bg-base border-2 border-border p-4 shadow-brutal-hover">
-                    <FileText className="w-6 h-6 text-accent-navy mb-2" />
-                    <div className="text-2xl font-black">{author.stats.total_pages}</div>
-                    <div className="text-xs text-text-muted font-bold uppercase mt-1">Total Pages</div>
-                  </div>
-                </div>
-              </div>
-              <div className="text-xs text-text-muted font-bold font-pixel mt-6 text-right">
-                *Calculated via direct catalog aggregation
-              </div>
-            </div>
-
-            {/* PANEL 2: Primary Genres */}
-            <div className="bg-surface-white border-[3px] border-border p-6 shadow-brutal flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-6">
-                  <h3 className="text-2xl font-black flex items-center gap-2">
-                    <BookOpen className="w-6 h-6 text-accent-teal" />
-                    <span>Primary Genres</span>
-                  </h3>
-                  <span className="font-pixel text-sm bg-accent-teal/10 border border-border px-2">Categorical</span>
-                </div>
-                
-                {author.genres.length > 0 ? (
-                  <div className="flex flex-wrap gap-2.5">
-                    {author.genres.map((genre, idx) => (
-                      <span
-                        key={idx}
-                        className={`text-sm font-bold border-2 border-border px-3.5 py-1.5 shadow-brutal-hover ${
-                          idx === 0 
-                            ? 'bg-accent-teal text-white' 
-                            : idx === 1 
-                              ? 'bg-accent-blue text-white' 
-                              : 'bg-bg-base text-text-main'
-                        }`}
-                      >
-                        {genre}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-text-muted font-medium italic">No category relationships established for this author.</p>
-                )}
-              </div>
-              
-              <div className="bg-bg-base border-2 border-border p-4 text-xs font-semibold leading-relaxed mt-6">
-                <strong>Matched by:</strong> <br/>
-                <code className="text-accent-teal font-pixel font-bold">
-                  (Author)-[:WRITTEN_BY]-(Book)-[:HAS_CATEGORY]-(Category)
-                </code>
-              </div>
-            </div>
-
-            {/* PANEL 3: Related authors */}
-            <div className="bg-surface-white border-[3px] border-border p-6 shadow-brutal flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-6">
-                  <h3 className="text-2xl font-black flex items-center gap-2">
-                    <Users className="w-6 h-6 text-accent-blue" />
-                    <span>Related Authors</span>
-                  </h3>
-                  <span className="font-pixel text-sm bg-accent-blue/10 border border-border px-2">Intersection</span>
-                </div>
-                
-                {author.co_authors.length > 0 ? (
-                  <div className="space-y-4">
-                    {author.co_authors.map((co, idx) => (
-                      <div 
-                        key={idx} 
-                        className="bg-bg-base border-2 border-border p-3 shadow-brutal-hover flex justify-between items-center"
-                      >
-                        <div>
-                          <Link 
-                            to={`/author/${co.name}`}
-                            className="font-bold text-md text-text-main hover:text-accent-blue hover:underline block"
-                          >
-                            {co.name}
-                          </Link>
-                          <span className="text-[10px] text-text-muted font-bold uppercase">
-                            Shared Genres: {co.shared_genres.slice(0, 2).join(', ')}
-                          </span>
-                        </div>
-                        <span className="font-pixel text-xs bg-surface-white border-2 border-border px-2 py-0.5">
-                          {co.shared_books} shared books
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-text-muted font-medium italic text-center p-4">
-                    No matching overlapping author pathways in current dataset bounds.
-                  </p>
-                )}
-              </div>
-              
-              <div className="text-xs font-pixel text-text-muted mt-6">
-                Based on shared genres
-              </div>
-            </div>
-            
-          </div>
+      <div className="grid grid-cols-12 gap-6 lg:gap-10 mb-24">
+        <FadeIn className="col-span-12 lg:col-span-7">
+          <p className="label mb-4">Biography</p>
+          <p className={`font-serif text-[clamp(1.3rem,2.2vw,1.9rem)] leading-[1.3] ${more ? '' : 'line-clamp-[8]'}`}>{bio}</p>
+          {bio.length > 500 && <button onClick={() => setMore(!more)} className="label !text-text-main link-under mt-4">{more ? 'Show less' : 'Read more'}</button>}
+        </FadeIn>
+        <div className="col-span-12 lg:col-span-4 lg:col-start-9 grid grid-cols-2 gap-x-6 gap-y-10 content-start">
+          {[
+            ['Books', s.total_books],
+            ['Avg rating', null, Number(s.avg_rating || 0).toFixed(2)],
+            ['Ratings', s.total_ratings],
+            ['Pages', s.total_pages],
+          ].map(([k, v, text]) => (
+            <FadeIn key={k}>
+              <p className="display-num text-[clamp(2.4rem,4vw,4rem)] tabular-nums">{text ?? <CountUp value={Number(v) || 0} />}</p>
+              <p className="label mt-2">{k}</p>
+            </FadeIn>
+          ))}
         </div>
+      </div>
 
-        {/* Masterpieces Grid */}
-        <div>
-          <h2 className="text-4xl font-black text-text-main mb-8 flex items-center gap-2">
-            <span className="font-pixel text-accent-red">_</span> Published Masterpieces
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 gap-y-12">
-            {author.books.map((book, idx) => (
-              <BookCard 
-                key={idx} 
-                book={book} 
-                colorScheme={colorPalettes[idx % colorPalettes.length]} 
-              />
+      {author.genres.length > 0 && (
+        <section className="mb-20">
+          <SectionTitle mark="( Writes in )">Genres</SectionTitle>
+          <div className="flex flex-wrap gap-2 mt-6">
+            {author.genres.map((g) => (
+              <Link key={g} to={`/explore?genre=${encodeURIComponent(g)}`} className="h-10 px-4 rounded-full border border-border text-[14px] inline-flex items-center hover:bg-text-main hover:text-bg-base transition-colors">{g}</Link>
             ))}
           </div>
-        </div>
+        </section>
+      )}
 
-      </div>
+      <section className="mb-20">
+        <SectionTitle mark={`( ${author.books.length} )`}>Books</SectionTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12 mt-8">
+          {author.books.map((b, i) => (
+            <FadeIn key={b.book_id || b.title} delay={(i % 5) * 0.06}><BookCard book={b} index={i} source="author" /></FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {author.co_authors.length > 0 && (
+        <section>
+          <SectionTitle mark="( Shared genres )">Readers of {first} also like</SectionTitle>
+          <ul className="mt-4">
+            {author.co_authors.map((co, i) => (
+              <li key={co.name} className="border-b border-border">
+                <Link to={`/author/${encodeURIComponent(co.name)}`} className="grid grid-cols-12 items-baseline gap-4 py-4 group">
+                  <span className="col-span-1 label tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="col-span-7 font-wide font-medium text-[clamp(1rem,2.4vw,2rem)] group-hover:text-accent-red transition-colors">{co.name}</span>
+                  <span className="col-span-4 label text-right">{co.shared_genres.slice(0, 3).join(', ')}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 };

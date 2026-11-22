@@ -5,6 +5,10 @@ Collections
   activity_logs          views / searches / clicks (used for trending books)
   chat_sessions          chatbot conversations, one document per conversation
   saved_recommendations  cached recommendation lists; a TTL index deletes them after 1 hour
+  book_takes             short notes on books for the reels feed, seen only by the author's followers
+  messages               direct messages between readers who follow each other
+  presence               last time each reader was active ("online now")
+  user_state             per-reader settings such as when notifications were last read
 
 If MongoDB is down, logging is skipped and readers fall back gracefully.
 """
@@ -36,6 +40,12 @@ def ensure_indexes():
         mdb.chat_sessions.create_index([("user_id", ASCENDING), ("updated_at", DESCENDING)])
         mdb.saved_recommendations.create_index("created_at", expireAfterSeconds=RECOMMENDATION_TTL_SECONDS)
         mdb.saved_recommendations.create_index("user_id", unique=True)
+        mdb.book_takes.create_index([("book_id", ASCENDING), ("created_at", DESCENDING)])
+        mdb.book_takes.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
+        mdb.messages.create_index([("thread", ASCENDING), ("created_at", DESCENDING)])
+        mdb.messages.create_index([("to", ASCENDING), ("read", ASCENDING)])
+        mdb.presence.create_index("user_id", unique=True)
+        mdb.user_state.create_index("user_id", unique=True)
         return True
     except Exception as e:
         print(f"MongoDB not available: {e}")
@@ -104,3 +114,8 @@ def delete_user_data(user_id: int):
     mdb.activity_logs.delete_many({"user_id": user_id})
     mdb.chat_sessions.delete_many({"user_id": user_id})
     mdb.saved_recommendations.delete_many({"user_id": user_id})
+    mdb.book_takes.delete_many({"user_id": user_id})
+    mdb.book_takes.update_many({"likes": user_id}, {"$pull": {"likes": user_id}})
+    mdb.messages.delete_many({"$or": [{"from": user_id}, {"to": user_id}]})
+    mdb.presence.delete_many({"user_id": user_id})
+    mdb.user_state.delete_many({"user_id": user_id})

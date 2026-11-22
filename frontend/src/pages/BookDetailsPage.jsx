@@ -1,22 +1,38 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Bookmark, Heart, Layers, ListPlus, Network, Pencil, Star, Trash2, Users } from 'lucide-react';
+import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
+import { ArrowLeft, Bookmark, BookOpen, Check, Heart, ListPlus, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import BookCard from '../components/BookCard';
 import NeoButton, { cn } from '../components/NeoButton';
 import LogBookModal from '../components/LogBookModal';
 import AddToListModal from '../components/AddToListModal';
 import ReviewCard from '../components/ReviewCard';
-import { Empty, SectionTitle, Spinner, Stars, UserLink, formatDate } from '../components/ui';
+import { CoverImage, EASE, Empty, FadeIn, RevealText, SectionTitle, Spinner, Stars, UserLink, formatDate } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  deleteEntry, getBookDetails, getBookReviews, getRecommendations, removeShelf, setShelf,
-} from '../services/api';
+import { coverPalette } from '../utils/colors';
+import { ShareToFriend } from '../components/social';
+import { deleteEntry, getBookDetails, getBookReviews, getReadersNow, getRecommendations, removeShelf, setShelf } from '../services/api';
 
 const SHELVES = [
   { id: 'want_to_read', label: 'Want to read', icon: Bookmark },
   { id: 'currently_reading', label: 'Reading now', icon: BookOpen },
 ];
+
+// About 45 pages an hour for an average adult reader
+const readingTime = (pages) => {
+  if (!pages) return null;
+  const mins = Math.round((pages / 45) * 60);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+};
+
+const titleLines = (title) =>
+  title.split(' ').reduce((lines, w) => {
+    const last = lines[lines.length - 1];
+    if (!last || `${last} ${w}`.length > 14) lines.push(w); else lines[lines.length - 1] = `${last} ${w}`;
+    return lines;
+  }, []);
 
 const BookDetailsPage = () => {
   const { title } = useParams();
@@ -26,12 +42,20 @@ const BookDetailsPage = () => {
   const [book, setBook] = useState(null);
   const [similar, setSimilar] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [palette, setPalette] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showXAI, setShowXAI] = useState(false);
+  const [showHow, setShowHow] = useState(false);
+  const [more, setMore] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [listOpen, setListOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [readers, setReaders] = useState(null);
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const coverY = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
+  const coverRotate = useTransform(scrollYProgress, [0, 1], [0, -6]);
 
   const load = useCallback(async () => {
     const decoded = decodeURIComponent(title);
@@ -39,17 +63,22 @@ const BookDetailsPage = () => {
     setBook(b);
     setSimilar(recs);
     setReviews(await getBookReviews(b.book_id));
+    getReadersNow(b.book_id).then(setReaders).catch(() => setReaders(null));
   }, [title]);
 
   useEffect(() => {
     if (authLoading) return;
     setLoading(true);
     setError(null);
-    window.scrollTo(0, 0);
+    setMore(false);
     load()
       .catch(() => setError('Book not found.'))
       .finally(() => setLoading(false));
   }, [load, currentUser, authLoading]);
+
+  useEffect(() => {
+    if (book?.thumbnail) coverPalette(book.thumbnail, 4).then(setPalette);
+  }, [book?.thumbnail]);
 
   const requireLogin = (fn) => () => (currentUser ? fn() : loginWithGoogle());
 
@@ -69,152 +98,175 @@ const BookDetailsPage = () => {
     await load();
   };
 
-  if (loading || authLoading) return <Spinner label="Loading book…" />;
+  if (loading || authLoading) return <Spinner label="Opening the book" />;
 
   if (error || !book) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
-        <div className="bg-surface-white border-[4px] border-border shadow-brutal-lg p-10 text-center max-w-lg">
-          <p className="text-2xl font-bold mb-8">{error || 'Book does not exist.'}</p>
-          <NeoButton onClick={() => navigate('/search')} variant="primary">Back to search</NeoButton>
-        </div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <p className="font-serif italic text-5xl mb-8">{error || 'This book does not exist.'}</p>
+        <NeoButton onClick={() => navigate('/explore')}>Back to the catalogue</NeoButton>
       </div>
     );
   }
 
-  const colorPalettes = ['white', 'red', 'blue', 'teal'];
+  const meta = [
+    ['Published', book.published_year || '—'],
+    ['Length', book.num_pages ? `${book.num_pages} pages` : '—'],
+    ['Reading time', readingTime(book.num_pages) ? `≈ ${readingTime(book.num_pages)}` : '—'],
+    ['Ratings', book.ratings_count?.toLocaleString() || '0'],
+    ['Publisher', book.publisher || '—'],
+    ['ISBN', book.isbn13 || '—'],
+    ['Language', (book.language || 'en').toUpperCase()],
+  ];
+  const description = book.description || 'No description available yet.';
+  const longDesc = description.length > 420;
 
   return (
-    <div className="min-h-screen bg-bg-base pb-24">
-      <div className="bg-surface-white border-b-[3px] border-border sticky top-20 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} className="flex items-center font-bold hover:text-accent-red transition-colors">
-            <ArrowLeft className="w-5 h-5 mr-2" /> Back
-          </button>
-        </div>
+    <div className="relative">
+      {/* Ambient tint pulled from the cover */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[110vh] -z-0 overflow-hidden" aria-hidden="true">
+        <motion.div
+          className="absolute -top-[30%] -left-[10%] w-[80vw] h-[80vw] rounded-full blur-[120px]"
+          animate={{ background: palette[0] || 'transparent', opacity: palette.length ? 0.28 : 0 }}
+          transition={{ duration: 1.4, ease: EASE }}
+        />
+        <motion.div
+          className="absolute top-[10%] right-[-20%] w-[60vw] h-[60vw] rounded-full blur-[140px]"
+          animate={{ background: palette[1] || 'transparent', opacity: palette.length ? 0.22 : 0 }}
+          transition={{ duration: 1.4, ease: EASE }}
+        />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-        <div className="flex flex-col lg:flex-row gap-10 xl:gap-16 mb-16">
-          {/* Cover */}
-          <div className="lg:w-1/3 xl:w-1/4 flex-shrink-0 max-w-xs mx-auto lg:mx-0 w-full">
-            <motion.div
-              initial={{ x: -50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className="bg-accent-blue border-[4px] border-border shadow-brutal-lg p-4 rotate-[-2deg] hover:rotate-0 transition-transform duration-300"
-            >
-              <div className="border-[3px] border-border bg-bg-base aspect-[2/3] relative overflow-hidden">
-                {book.thumbnail ? (
-                  <img src={book.thumbnail} alt={book.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center font-pixel text-xl p-6 text-center">NO COVER</div>
-                )}
-                <div className="absolute top-3 right-3 bg-accent-red text-white border-[3px] border-border shadow-brutal px-3 py-1 flex items-center font-bold text-xl">
-                  <Star className="w-5 h-5 fill-current mr-1" />
-                  {book.average_rating ? book.average_rating.toFixed(1) : 'N/A'}
-                </div>
-              </div>
-            </motion.div>
+      <div className="relative max-w-[1400px] mx-auto px-5 sm:px-8 lg:px-10 pt-4 pb-24">
+        {/* Breadcrumb */}
+        <div className="flex items-center justify-between border-t border-border pt-3 mb-10">
+          <button onClick={() => navigate(-1)} className="label !text-text-main flex items-center gap-1.5 group">
+            <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" /> Back
+          </button>
+          <span className="label truncate max-w-[60%]">
+            <Link to="/explore" className="link-draw">Explore</Link>
+            {book.categories?.[0] && <> / <Link to={`/explore?genre=${encodeURIComponent(book.categories[0])}`} className="link-draw">{book.categories[0]}</Link></>}
+            {' / '}{book.title}
+          </span>
+        </div>
 
-            {/* Actions */}
-            <div className="mt-8 space-y-3">
-              <NeoButton fullWidth variant="primary" onClick={requireLogin(() => { setEditing(null); setLogOpen(true); })}>
-                {currentUser ? (book.my_entries.length ? 'Log again' : 'Log / Review') : 'Sign in to log'}
-              </NeoButton>
-              {currentUser && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    {SHELVES.map(({ id, label, icon: Icon }) => (
-                      <button
-                        key={id}
-                        onClick={() => toggleShelf(id)}
-                        aria-pressed={book.shelf_status === id}
-                        className={cn(
-                          'flex items-center justify-center gap-2 px-2 py-3 border-[3px] border-border font-bold text-sm shadow-brutal hover:shadow-brutal-hover',
-                          book.shelf_status === id ? 'bg-accent-teal text-white' : 'bg-surface-white'
-                        )}
-                      >
-                        <Icon className="w-4 h-4" /> {label}
-                      </button>
-                    ))}
-                  </div>
-                  <NeoButton fullWidth variant="white" onClick={() => setListOpen(true)}>
-                    <ListPlus className="w-5 h-5 mr-2" /> Add to list
-                  </NeoButton>
-                </>
-              )}
-            </div>
+        {/* Hero */}
+        <section ref={heroRef} className="grid grid-cols-12 gap-6 lg:gap-10 mb-24">
+          <div className="col-span-12 md:col-span-5 lg:col-span-4">
+            <motion.div style={{ y: coverY, rotate: coverRotate }} className="w-[70%] md:w-full max-w-[380px] mx-auto md:mx-0 [perspective:1000px]">
+              <motion.div
+                initial={{ rotateY: -35, opacity: 0, x: -40 }}
+                animate={{ rotateY: 0, opacity: 1, x: 0 }}
+                transition={{ duration: 1.4, ease: EASE }}
+                whileHover={{ rotateY: 12, rotateX: -4 }}
+                className="relative aspect-[2/3] rounded-[3px] overflow-hidden shadow-[0_50px_80px_-30px_rgba(0,0,0,0.55)]"
+              >
+                <CoverImage book={book} eager />
+                <span className="pointer-events-none absolute inset-y-0 left-0 w-[8%] bg-gradient-to-r from-black/30 via-white/10 to-transparent" />
+              </motion.div>
+            </motion.div>
+            {palette.length > 0 && (
+              <div className="flex gap-2 mt-8 justify-center md:justify-start">
+                {palette.map((c, i) => (
+                  <motion.span key={c + i} title={c} className="w-4 h-4 block" style={{ background: c }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6 + i * 0.07, duration: 0.5, ease: EASE }} />
+                ))}
+                <span className="label self-center ml-2">Cover palette</span>
+              </div>
+            )}
           </div>
 
-          {/* Info */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="lg:flex-1 flex flex-col min-w-0">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-text-main leading-[1.05] mb-4 break-words">{book.title}</h1>
-            {book.subtitle && <h2 className="text-xl sm:text-2xl font-medium text-text-muted mb-6">{book.subtitle}</h2>}
-
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-              {book.authors?.map((author) => (
-                <Link
-                  key={author}
-                  to={`/author/${encodeURIComponent(author)}`}
-                  className="bg-text-main hover:bg-accent-teal transition-colors text-white font-pixel text-xl px-4 py-1.5 uppercase tracking-widest shadow-brutal border-2 border-border"
-                >
-                  {author}
-                </Link>
-              ))}
-              {book.published_year && <span className="text-lg font-bold">EST. {book.published_year}</span>}
-            </div>
-
-            <div className="flex flex-wrap gap-2 mb-8">
+          <div className="col-span-12 md:col-span-7 lg:col-span-8 lg:pl-6">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-5">
               {book.categories?.map((cat) => (
-                <Link
-                  key={cat}
-                  to={`/search?genre=${encodeURIComponent(cat)}`}
-                  className="bg-surface-white border-[2px] border-border px-3 py-1 font-bold shadow-[2px_2px_0px_0px_#111] hover:-translate-y-0.5 transition-all"
-                >
-                  #{cat.toUpperCase()}
-                </Link>
+                <Link key={cat} to={`/explore?genre=${encodeURIComponent(cat)}`} className="label link-draw">{cat}</Link>
+              ))}
+            </div>
+            <RevealText as="h1" delay={0.1} className="font-serif text-[clamp(2.8rem,7.5vw,7.5rem)] leading-[0.88] tracking-[-0.02em] break-words">
+              {titleLines(book.title)}
+            </RevealText>
+            {book.subtitle && <p className="font-serif italic text-[clamp(1.2rem,2.2vw,1.9rem)] text-text-muted mt-3">{book.subtitle}</p>}
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8">
+              <span className="label">Written by</span>
+              {book.authors?.map((a) => (
+                <Link key={a} to={`/author/${encodeURIComponent(a)}`} className="font-wide font-medium text-[15px] link-under">{a}</Link>
               ))}
             </div>
 
-            <div className="bg-surface-white border-[3px] border-border shadow-brutal p-6 md:p-8 mb-8 relative">
-              <div className="absolute -top-4 -left-4 bg-accent-teal border-2 border-border p-2 shadow-[2px_2px_0px_0px_#111]">
-                <Layers className="w-6 h-6 text-white" />
-              </div>
-              <p className="text-lg md:text-xl leading-relaxed font-medium">{book.description || 'No description available.'}</p>
+            <div className="flex items-center gap-4 mt-6">
+              <Stars value={book.average_rating || 0} size="w-5 h-5" />
+              <span className="display-num text-[2.6rem]">{book.average_rating ? Number(book.average_rating).toFixed(2) : '–'}</span>
+              <span className="label">average from<br />{book.ratings_count?.toLocaleString() || 0} ratings</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: 'Pages', val: book.num_pages || 'N/A', bg: 'bg-accent-blue' },
-                { label: 'Ratings', val: book.ratings_count?.toLocaleString() || '0', bg: 'bg-accent-red', text: 'text-white' },
-                { label: 'ISBN', val: book.isbn13 || 'N/A', bg: 'bg-surface-white' },
-                { label: 'Publisher', val: book.publisher || 'N/A', bg: 'bg-surface-white' },
-              ].map((stat) => (
-                <div key={stat.label} className={cn('border-[3px] border-border shadow-brutal p-4 flex flex-col justify-between min-w-0', stat.bg, stat.text)}>
-                  <span className="font-pixel text-sm uppercase tracking-widest opacity-80 mb-1">{stat.label}</span>
-                  <span className="font-black text-lg truncate" title={String(stat.val)}>{stat.val}</span>
+            {/* Actions */}
+            <div className="flex flex-wrap items-center gap-2 mt-8">
+              <NeoButton size="lg" onClick={requireLogin(() => { setEditing(null); setLogOpen(true); })}>
+                <Plus className="w-4 h-4 mr-2" />
+                {currentUser ? (book.my_entries.length ? 'Log again' : 'Log or review') : 'Sign in to log'}
+              </NeoButton>
+              {currentUser && SHELVES.map(({ id, label, icon: Icon }) => (
+                <NeoButton key={id} size="lg" variant={book.shelf_status === id ? 'secondary' : 'white'} onClick={() => toggleShelf(id)} aria-pressed={book.shelf_status === id}>
+                  {book.shelf_status === id ? <Check className="w-4 h-4 mr-2" /> : <Icon className="w-4 h-4 mr-2" />} {label}
+                </NeoButton>
+              ))}
+              {currentUser && (
+                <NeoButton size="lg" variant="white" onClick={() => setListOpen(true)}>
+                  <ListPlus className="w-4 h-4 mr-2" /> Add to list
+                </NeoButton>
+              )}
+              {currentUser && (
+                <NeoButton size="lg" variant="red" onClick={() => setShareOpen(true)}>
+                  <Send className="w-4 h-4 mr-2" /> Send to a friend
+                </NeoButton>
+              )}
+            </div>
+
+            {readers?.count > 0 && (
+              <div className="flex flex-wrap items-center gap-3 mt-6 text-[13px]">
+                <span className="relative flex w-2.5 h-2.5"><span className="absolute inset-0 rounded-full bg-[#3BB273] animate-ping opacity-60" /><span className="relative w-2.5 h-2.5 rounded-full bg-[#3BB273]" /></span>
+                <span><b className="font-semibold">{readers.count}</b> {readers.count === 1 ? 'reader is' : 'readers are'} reading this right now</span>
+                {[...readers.friends, ...readers.others].slice(0, 5).map((u) => (
+                  <Link key={u} to={`/u/${u}`} className={cn('h-7 px-2.5 rounded-full border text-[12px] inline-flex items-center', readers.friends.includes(u) ? 'border-text-main font-medium' : 'border-border text-text-muted')}>@{u}</Link>
+                ))}
+              </div>
+            )}
+
+            {/* Description */}
+            <div className="mt-12 max-w-[44rem]">
+              <p className="label mb-3">About the book</p>
+              <motion.div animate={{ height: 'auto' }} className="relative overflow-hidden">
+                <p className={cn('text-[16px] leading-[1.65] text-text-main/90 first-letter:font-serif first-letter:text-[3.6em] first-letter:float-left first-letter:leading-[0.8] first-letter:mr-2 first-letter:mt-1', !more && longDesc && 'line-clamp-6')}>
+                  {description}
+                </p>
+              </motion.div>
+              {longDesc && <button onClick={() => setMore(!more)} className="label !text-text-main link-under mt-3">{more ? 'Show less' : 'Read more'}</button>}
+            </div>
+
+            {/* Meta grid */}
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5 mt-12 border-t border-border pt-4">
+              {meta.map(([k, v]) => (
+                <div key={k} className="min-w-0">
+                  <dt className="label">{k}</dt>
+                  <dd className="value !text-[13px] mt-1 truncate" title={String(v)}>{v}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
 
-            {/* My diary entries */}
+            {/* My diary */}
             {book.my_entries.length > 0 && (
-              <div className="bg-accent-teal/15 border-[3px] border-border p-5 mb-6">
-                <h3 className="font-black text-xl mb-3">Your diary</h3>
-                <ul className="space-y-3">
+              <div className="mt-12">
+                <p className="label mb-3">Your diary</p>
+                <ul className="divide-y divide-border border-y border-border">
                   {book.my_entries.map((e) => (
-                    <li key={e.entry_id} className="flex flex-wrap items-center gap-3 bg-surface-white border-2 border-border p-3">
-                      <span className="font-bold">{formatDate(e.date_read || e.created_at)}</span>
+                    <li key={e.entry_id} className="flex flex-wrap items-center gap-4 py-3">
+                      <span className="text-[13px] tabular-nums w-28">{formatDate(e.date_read || e.created_at)}</span>
                       <Stars value={e.rating} />
-                      {e.is_liked && <Heart className="w-4 h-4 text-accent-red fill-accent-red" />}
-                      {e.review_text && <span className="text-text-muted truncate max-w-xs">“{e.review_text}”</span>}
-                      <span className="ml-auto flex gap-2">
-                        <button aria-label="Edit entry" onClick={() => { setEditing(e); setLogOpen(true); }} className="p-1 hover:text-accent-teal">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button aria-label="Delete entry" onClick={() => removeEntry(e)} className="p-1 hover:text-accent-red">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      {e.is_liked && <Heart className="w-3.5 h-3.5 text-accent-red fill-accent-red" />}
+                      {e.review_text && <span className="text-[13px] text-text-muted truncate max-w-xs font-serif italic">“{e.review_text}”</span>}
+                      <span className="ml-auto flex gap-1">
+                        <button aria-label="Edit entry" onClick={() => { setEditing(e); setLogOpen(true); }} className="w-8 h-8 rounded-full hover:bg-text-main hover:text-bg-base flex items-center justify-center transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button aria-label="Delete entry" onClick={() => removeEntry(e)} className="w-8 h-8 rounded-full hover:bg-accent-red hover:text-white flex items-center justify-center transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                       </span>
                     </li>
                   ))}
@@ -222,13 +274,12 @@ const BookDetailsPage = () => {
               </div>
             )}
 
-            {/* Friends who read it */}
             {book.friends_who_read?.length > 0 && (
-              <div className="bg-surface-white border-[3px] border-border p-5">
-                <h3 className="font-black text-xl mb-3 flex items-center gap-2"><Users className="w-5 h-5" /> People you follow who read this</h3>
-                <div className="flex flex-wrap gap-3">
+              <div className="mt-10">
+                <p className="label mb-3">People you follow who read it</p>
+                <div className="flex flex-wrap gap-2">
                   {book.friends_who_read.map((f) => (
-                    <span key={f.username} className="flex items-center gap-2 bg-bg-base border-2 border-border px-3 py-1.5">
+                    <span key={f.username} className="flex items-center gap-2 rounded-full border border-border px-3 h-9 text-[13px]">
                       <UserLink username={f.username} />
                       <Stars value={f.rating} size="w-3 h-3" />
                       {f.liked && <Heart className="w-3 h-3 text-accent-red fill-accent-red" />}
@@ -237,59 +288,53 @@ const BookDetailsPage = () => {
                 </div>
               </div>
             )}
-          </motion.div>
-        </div>
+          </div>
+        </section>
 
         {/* Reviews */}
-        <section className="mb-16">
-          <SectionTitle mark="“" color="text-accent-red">Reviews</SectionTitle>
+        <section className="mb-24">
+          <SectionTitle mark={`( ${reviews.length} )`}>Reviews</SectionTitle>
           {reviews.length ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {reviews.map((r) => <ReviewCard key={r.entry_id} review={r} />)}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+              {reviews.map((r, i) => <FadeIn key={r.entry_id} delay={(i % 2) * 0.08}><ReviewCard review={r} /></FadeIn>)}
             </div>
           ) : (
             <Empty title="No reviews yet">Be the first to log this book.</Empty>
           )}
         </section>
 
-        {/* How recommendations work */}
-        <div className="mb-12">
-          <button
-            className="w-full bg-accent-navy text-white border-[4px] border-border shadow-brutal p-6 flex flex-col md:flex-row items-center justify-between gap-4 text-left"
-            onClick={() => setShowXAI(!showXAI)}
-            aria-expanded={showXAI}
+        {/* Similar */}
+        <section>
+          <SectionTitle
+            mark="( More like this )"
+            right={<button onClick={() => setShowHow(!showHow)} className="label link-under" aria-expanded={showHow}>{showHow ? 'Hide' : 'How is this scored?'}</button>}
           >
-            <span className="flex items-center gap-4">
-              <span className="bg-accent-teal border-2 border-border p-3"><Network className="w-7 h-7 text-white" /></span>
-              <span>
-                <span className="block text-2xl font-black">How “You might also like” works</span>
-                <span className="font-pixel text-lg text-gray-300">{showXAI ? 'Hide' : 'Show'} the scoring</span>
-              </span>
-            </span>
-          </button>
+            You might also like
+          </SectionTitle>
           <AnimatePresence>
-            {showXAI && (
-              <motion.pre
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden bg-surface-white border-x-[4px] border-b-[4px] border-border p-6 text-sm md:text-base font-bold whitespace-pre-wrap"
-              >
-                {`> Find other books that share at least one genre with "${book.title}"
-> Count people you follow who logged each one in their diary
-> SCORE = 5 × shared genres + 3 × avg rating + 2 × ln(1 + number of ratings) + 2 × friends who read it
-> Show the top 10 by score`}
-              </motion.pre>
+            {showHow && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.6, ease: EASE }} className="overflow-hidden">
+                <div className="grid md:grid-cols-4 gap-6 py-6 text-[13px]">
+                  {[
+                    ['01', 'Candidates', `Books that share at least one genre with “${book.title}”.`],
+                    ['02', 'Friends', 'Count people you follow who logged each one.'],
+                    ['03', 'Score', '5 × shared genres + 3 × avg rating + 2 × ln(1 + ratings) + 2 × friends who read it.'],
+                    ['04', 'Rank', 'Show the top 10, computed live in PostgreSQL.'],
+                  ].map(([n, t, d]) => (
+                    <div key={n}>
+                      <p className="display-num text-4xl text-accent-red">{n}</p>
+                      <p className="font-wide font-medium text-[12px] mt-2 mb-1">{t}</p>
+                      <p className="text-text-muted leading-snug">{d}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        <section>
-          <SectionTitle mark="*" color="text-accent-red">You might also like</SectionTitle>
           {similar.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
-              {similar.map((rec, idx) => (
-                <BookCard key={rec.book_id} book={rec} source="similar" colorScheme={colorPalettes[idx % colorPalettes.length]} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12 mt-8">
+              {similar.map((rec, i) => (
+                <FadeIn key={rec.book_id} delay={(i % 5) * 0.06}><BookCard book={rec} source="similar" /></FadeIn>
               ))}
             </div>
           ) : (
@@ -300,6 +345,7 @@ const BookDetailsPage = () => {
 
       <LogBookModal open={logOpen} onClose={() => setLogOpen(false)} book={book} entry={editing} onSaved={load} />
       <AddToListModal open={listOpen} onClose={() => setListOpen(false)} book={book} />
+      <ShareToFriend open={shareOpen} onClose={() => setShareOpen(false)} book={book} />
     </div>
   );
 };

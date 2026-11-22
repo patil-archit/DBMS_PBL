@@ -39,7 +39,7 @@ const MyLibraryPage = () => {
     return (
       <Page className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <BookMarked className="w-24 h-24 mb-6 text-accent-blue" />
-        <h1 className="text-4xl md:text-5xl font-black mb-6 uppercase tracking-tight">Your reading diary</h1>
+        <h1 className="text-4xl md:text-5xl font-medium mb-6 uppercase tracking-tight">Your reading diary</h1>
         <p className="text-xl text-text-muted mb-8 max-w-2xl font-medium">
           Sign in to log books with ratings and reviews, keep shelves, make lists and set a yearly reading goal.
         </p>
@@ -62,8 +62,13 @@ const MyLibraryPage = () => {
   return (
     <Page>
       <PageTitle
-        mark="_"
-        right={me && <Link to={`/u/${me.username}`} className="font-bold underline">View public profile</Link>}
+        kicker="( Library ) your diary, shelves and lists"
+        right={me && (
+          <div className="flex flex-col items-end gap-1">
+            <Link to={`/u/${me.username}/stats`} className="label !text-text-main link-under">Your year in books</Link>
+            <Link to={`/u/${me.username}`} className="label link-under">View public profile</Link>
+          </div>
+        )}
       >
         My Books
       </PageTitle>
@@ -100,15 +105,15 @@ const MyLibraryPage = () => {
             authors.length ? (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {authors.map((a) => (
-                  <Link key={a.name} to={`/author/${encodeURIComponent(a.name)}`} className="flex items-center gap-4 bg-surface-white border-[3px] border-border shadow-brutal p-4 hover:shadow-brutal-hover">
+                  <Link key={a.name} to={`/author/${encodeURIComponent(a.name)}`} className="flex items-center gap-4 bg-surface-white border border-border p-4">
                     {a.image_url ? (
-                      <img src={a.image_url} alt={a.name} className="w-16 h-16 object-cover border-2 border-border" />
+                      <img src={a.image_url} alt={a.name} className="w-16 h-16 object-cover border border-border" />
                     ) : (
-                      <div className="w-16 h-16 bg-accent-blue border-2 border-border" />
+                      <div className="w-16 h-16 bg-accent-blue border border-border" />
                     )}
                     <div>
-                      <p className="font-black text-lg">{a.name}</p>
-                      <p className="font-pixel text-lg text-text-muted">{a.book_count} books</p>
+                      <p className="font-medium text-lg">{a.name}</p>
+                      <p className="label text-text-muted">{a.book_count} books</p>
                     </div>
                   </Link>
                 ))}

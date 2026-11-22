@@ -11,9 +11,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { getProfile, getUserDiary, getUserGoal, getUserLists, getUserShelves } from '../services/api';
 
 const Stat = ({ n, label }) => (
-  <div className="text-center px-3">
-    <div className="font-black text-2xl">{n}</div>
-    <div className="font-pixel text-lg uppercase tracking-widest text-text-muted">{label}</div>
+  <div className="px-5 first:pl-0">
+    <div className="display-num text-4xl tabular-nums">{n}</div>
+    <div className="label mt-1">{label}</div>
   </div>
 );
 
@@ -50,22 +50,25 @@ const ProfilePage = () => {
 
   return (
     <Page>
-      <header className="flex flex-col md:flex-row md:items-center gap-6 mb-10 border-b-4 border-border pb-8">
+      <header className="flex flex-col md:flex-row md:items-center gap-6 mb-10 border-b border-border pb-8">
         <Avatar username={profile.username} size="w-24 h-24 text-5xl" />
         <div className="flex-1 min-w-0">
-          <h1 className="text-4xl md:text-5xl font-black break-words flex items-center gap-3">
+          <h1 className="font-wide font-medium text-[clamp(2rem,5vw,4.5rem)] leading-none tracking-[-0.02em] break-words flex items-center gap-3">
             @{profile.username}
             {profile.is_private && <Lock className="w-7 h-7" aria-label="Private diary" />}
           </h1>
-          {profile.role !== 'reader' && <span className="inline-block mt-1 font-pixel text-lg bg-accent-navy text-white px-2 uppercase">{profile.role}</span>}
-          {profile.bio && <p className="text-lg font-medium mt-2 whitespace-pre-wrap">{profile.bio}</p>}
-          <p className="text-sm text-text-muted font-medium mt-1">
+          {profile.role !== 'reader' && <span className="inline-block mt-3 label !text-bg-base bg-text-main rounded-full px-2.5 py-0.5 uppercase">{profile.role}</span>}
+          {profile.bio && <p className="font-serif text-[1.4rem] leading-snug mt-4 whitespace-pre-wrap max-w-2xl">{profile.bio}</p>}
+          <p className="label mt-3">
             Joined {formatDate(profile.created_at)}{profile.follows_you && ' · Follows you'}
           </p>
         </div>
         <div className="flex flex-col items-start md:items-end gap-3">
+          {!profile.diary_hidden && (
+            <Link to={`/u/${profile.username}/stats`} className="label !text-text-main link-under">Year in books →</Link>
+          )}
           {profile.is_me ? (
-            <Link to="/settings" className="font-bold underline">Edit profile</Link>
+            <Link to="/settings" className="label link-under">Edit profile</Link>
           ) : (
             <FollowButton username={profile.username} following={profile.is_following} size="md" />
           )}
@@ -74,7 +77,7 @@ const ProfilePage = () => {
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-10">
         <div className="min-w-0">
-          <div className="flex flex-wrap divide-x-2 divide-border bg-surface-white border-[3px] border-border shadow-brutal py-3 mb-8">
+          <div className="flex flex-wrap divide-x divide-border border-y border-border py-4 mb-10">
             <Stat n={profile.books} label="Books" />
             <Stat n={profile.reviews} label="Reviews" />
             <Stat n={profile.lists} label="Lists" />
@@ -114,18 +117,18 @@ const ProfilePage = () => {
 
         <aside className="space-y-6">
           {net && (
-            <Card className="bg-accent-blue">
-              <h3 className="font-black text-xl mb-3">You & @{profile.username}</h3>
-              <p className="font-bold text-lg">
+            <Card className="bg-text-main text-bg-base border-0">
+              <p className="text-[11px] opacity-60 mb-3">( You &amp; @{profile.username} )</p>
+              <p className="text-[15px]">
                 {net.steps == null ? 'Not connected yet' : net.steps === 1 ? 'Directly connected' : `${net.steps} steps apart`}
               </p>
               {net.match_percent != null && (
                 <>
-                  <p className="font-black text-4xl mt-2">{net.match_percent}%</p>
+                  <p className="display-num text-7xl mt-4">{net.match_percent}<span className="text-3xl">%</span></p>
                   <p className="font-medium">taste match{net.shared_books ? ` · ${net.shared_books} book${net.shared_books === 1 ? '' : 's'} in common` : ' · no books in common yet'}</p>
                 </>
               )}
-              <p className="text-xs mt-3 font-medium opacity-80">Computed with {net.source === 'neo4j' ? 'Neo4j' : 'PostgreSQL'}.</p>
+              <p className="text-[11px] mt-4 opacity-60">Computed with {net.source === 'neo4j' ? 'Neo4j' : 'PostgreSQL'}.</p>
             </Card>
           )}
           {goal && <GoalWidget goal={goal} readOnly />}

@@ -9,14 +9,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { admin, errorMessage } from '../services/api';
 
 const Table = ({ cols, rows, render }) => (
-  <div className="overflow-x-auto border-[3px] border-border bg-surface-white">
+  <div className="overflow-x-auto border border-border bg-surface-white">
     <table className="w-full text-left">
-      <thead className="bg-accent-navy text-white">
-        <tr>{cols.map((c) => <th key={c} className="px-3 py-2 font-bold whitespace-nowrap">{c}</th>)}</tr>
+      <thead className="bg-text-main text-bg-base">
+        <tr>{cols.map((c) => <th key={c} className="px-3 py-2 font-medium whitespace-nowrap">{c}</th>)}</tr>
       </thead>
       <tbody>
         {rows.map((r, i) => (
-          <tr key={i} className="border-t-2 border-border align-top">{render(r).map((cell, j) => <td key={j} className="px-3 py-2">{cell}</td>)}</tr>
+          <tr key={i} className="border-t border-border align-top">{render(r).map((cell, j) => <td key={j} className="px-3 py-2">{cell}</td>)}</tr>
         ))}
       </tbody>
     </table>
@@ -43,8 +43,8 @@ const Overview = () => {
       <div className="flex flex-wrap gap-4">
         {Object.entries(data.totals).map(([k, v]) => (
           <Card key={k} className="flex-1 min-w-[140px]">
-            <div className="font-black text-3xl">{v}</div>
-            <div className="font-pixel text-lg uppercase tracking-widest text-text-muted">{k.replace('_', ' ')}</div>
+            <div className="font-medium text-3xl">{v}</div>
+            <div className="label text-text-muted">{k.replace('_', ' ')}</div>
           </Card>
         ))}
       </div>
@@ -53,7 +53,7 @@ const Overview = () => {
           <SectionTitle right={<NeoButton size="sm" variant="white" onClick={load}><RefreshCw className="w-4 h-4 mr-1" /> Refresh</NeoButton>}>Most read books</SectionTitle>
           {data.most_read.length ? (
             <Table cols={['Book', 'Readers', 'Logs', 'Avg rating', 'Likes']} rows={data.most_read} render={(r) => [
-              <Link to={`/book/${encodeURIComponent(r.title)}`} className="font-bold hover:underline">{r.title}</Link>, r.readers, r.times_logged, <Stars value={r.avg_user_rating} />, r.likes,
+              <Link to={`/book/${encodeURIComponent(r.title)}`} className="font-medium hover:underline">{r.title}</Link>, r.readers, r.times_logged, <Stars value={r.avg_user_rating} />, r.likes,
             ]} />
           ) : <Empty title="No diary entries yet" />}
         </section>
@@ -70,11 +70,11 @@ const Overview = () => {
           <ul className="space-y-2">
             {data.genre_trends.map((g) => (
               <li key={g.genre} className="grid grid-cols-[160px_1fr_auto] items-center gap-3">
-                <span className="font-bold truncate">{g.genre}</span>
-                <span className="h-6 bg-surface-white border-2 border-border">
-                  <span className="block h-full bg-accent-teal border-r-2 border-border" style={{ width: `${(100 * g.logs) / max}%` }} />
+                <span className="font-medium truncate">{g.genre}</span>
+                <span className="h-6 bg-surface-white border border-border">
+                  <span className="block h-full bg-accent-teal border-r border-border" style={{ width: `${(100 * g.logs) / max}%` }} />
                 </span>
-                <span className="font-pixel text-xl w-28 text-right">{g.logs} logs · {g.avg_rating ?? '–'}★</span>
+                <span className="label w-28 text-right">{g.logs} logs · {g.avg_rating ?? '–'}★</span>
               </li>
             ))}
           </ul>
@@ -112,13 +112,13 @@ const Moderation = () => {
           {reports.map((r) => (
             <li key={r.report_id}>
               <Card>
-                <p className="text-sm font-bold text-text-muted mb-2">
+                <p className="text-sm font-medium text-text-muted mb-2">
                   Reported by <UserLink username={r.reporter} /> {timeAgo(r.created_at)} · {r.open_reports} open report(s)
                   {r.resolved_by && <> · {r.status} by <UserLink username={r.resolved_by} /></>}
                 </p>
-                <p className="font-bold mb-2">Reason: <span className="font-medium">{r.reason}</span></p>
-                <div className="bg-bg-base border-2 border-border p-3 mb-3">
-                  <p className="text-sm font-bold"><UserLink username={r.review_author} /> on <em>{r.book_title}</em> <Stars value={r.rating} size="w-3 h-3" /></p>
+                <p className="font-medium mb-2">Reason: <span className="font-medium">{r.reason}</span></p>
+                <div className="bg-bg-base border border-border p-3 mb-3">
+                  <p className="text-sm font-medium"><UserLink username={r.review_author} /> on <em>{r.book_title}</em> <Stars value={r.rating} size="w-3 h-3" /></p>
                   <p className="font-medium whitespace-pre-wrap">{r.review_text || '(rating only)'}</p>
                 </div>
                 {status === 'open' && (
@@ -187,7 +187,7 @@ const BooksAdmin = () => {
         <NeoButton variant="navy" onClick={() => edit(null)}><Plus className="w-4 h-4 mr-1" /> Add book</NeoButton>
       </div>
       <Table cols={['Title', 'Authors', 'Year', 'Rating', '']} rows={rows} render={(b) => [
-        <Link to={`/book/${encodeURIComponent(b.title)}`} className="font-bold hover:underline">{b.title}</Link>, b.authors, b.pub_year, `${b.avg_rating} (${b.ratings_count})`,
+        <Link to={`/book/${encodeURIComponent(b.title)}`} className="font-medium hover:underline">{b.title}</Link>, b.authors, b.pub_year, `${b.avg_rating} (${b.ratings_count})`,
         <span className="flex gap-2"><button aria-label="Edit" onClick={() => edit(b.book_id)}><Pencil className="w-4 h-4" /></button><button aria-label="Delete" onClick={() => remove(b)} className="hover:text-accent-red"><Trash2 className="w-4 h-4" /></button></span>,
       ]} />
       <Modal open={!!form} onClose={() => setForm(null)} title={form?.book_id ? 'Edit book' : 'Add book'} wide>
@@ -248,7 +248,7 @@ const AuthorsAdmin = () => {
         <NeoButton variant="navy" onClick={() => { setError(null); setForm({ name: '', bio: '', photo_url: '' }); }}><Plus className="w-4 h-4 mr-1" /> Add author</NeoButton>
       </div>
       <Table cols={['Name', 'Books', 'Bio', '']} rows={rows} render={(a) => [
-        <Link to={`/author/${encodeURIComponent(a.name)}`} className="font-bold hover:underline">{a.name}</Link>, a.book_count,
+        <Link to={`/author/${encodeURIComponent(a.name)}`} className="font-medium hover:underline">{a.name}</Link>, a.book_count,
         <span className="line-clamp-2 text-sm">{a.bio}</span>,
         <span className="flex gap-2"><button aria-label="Edit" onClick={() => { setError(null); setForm({ ...a, bio: a.bio || '', photo_url: a.photo_url || '' }); }}><Pencil className="w-4 h-4" /></button><button aria-label="Delete" onClick={() => remove(a)} className="hover:text-accent-red"><Trash2 className="w-4 h-4" /></button></span>,
       ]} />
@@ -296,7 +296,7 @@ const GenresAdmin = () => {
     <>
       <div className="mb-4"><NeoButton variant="navy" onClick={() => { setError(null); setForm({ name: '', parent_genre_id: '' }); }}><Plus className="w-4 h-4 mr-1" /> Add genre</NeoButton></div>
       <Table cols={['Genre', 'Parent', 'Books', '']} rows={rows} render={(g) => [
-        <span className="font-bold">{g.name}</span>, g.parent_name || '–', g.book_count,
+        <span className="font-medium">{g.name}</span>, g.parent_name || '–', g.book_count,
         <span className="flex gap-2"><button aria-label="Edit" onClick={() => { setError(null); setForm({ ...g, parent_genre_id: g.parent_genre_id || '' }); }}><Pencil className="w-4 h-4" /></button><button aria-label="Delete" onClick={() => remove(g)} className="hover:text-accent-red"><Trash2 className="w-4 h-4" /></button></span>,
       ]} />
       <Modal open={!!form} onClose={() => setForm(null)} title={form?.genre_id ? 'Edit genre' : 'Add genre'}>
@@ -400,7 +400,7 @@ const AdminPage = () => {
 
   return (
     <Page>
-      <PageTitle mark="!" color="text-accent-red">{isAdmin ? 'Admin' : 'Moderation'}</PageTitle>
+      <PageTitle kicker="( Staff ) catalogue, reports, analytics and audit log">{isAdmin ? 'Admin' : 'Moderation'}</PageTitle>
       <Tabs active={tab} onChange={setTab} tabs={tabs} />
       {tab === 'overview' && <Overview />}
       {tab === 'moderation' && <Moderation />}

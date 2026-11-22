@@ -20,8 +20,7 @@ export const ListsPage = () => {
   return (
     <Page>
       <PageTitle
-        mark="≡"
-        color="text-accent-blue"
+        kicker="( Lists ) ranked collections by readers"
         right={currentUser && <Link to="/lists/new"><NeoButton variant="primary"><Plus className="w-5 h-5 mr-1" /> New list</NeoButton></Link>}
       >
         Lists
@@ -69,7 +68,7 @@ export const NewListPage = () => {
 
   return (
     <Page className="max-w-2xl">
-      <PageTitle mark="+" color="text-accent-blue">New list</PageTitle>
+      <PageTitle kicker="( Lists ) ranked, public or private">New list</PageTitle>
       <form onSubmit={submit}>
         <ErrorBox>{error}</ErrorBox>
         <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} required /></Field>

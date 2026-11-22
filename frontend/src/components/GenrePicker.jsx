@@ -15,8 +15,8 @@ export const GenreChips = ({ selected, onToggle, genres }) => (
           aria-pressed={on}
           onClick={() => onToggle(g.name)}
           className={cn(
-            'px-3 py-1.5 border-2 border-border font-bold text-sm transition-all',
-            on ? 'bg-accent-navy text-white shadow-none' : 'bg-surface-white shadow-[2px_2px_0_0_#111] hover:-translate-y-0.5'
+            'px-3 py-1.5 border border-border font-medium text-sm transition-all',
+            on ? 'bg-text-main text-bg-base shadow-none' : 'bg-surface-white hover:-translate-y-0.5'
           )}
         >
           {g.name}

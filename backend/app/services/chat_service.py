@@ -189,6 +189,16 @@ Genres in the catalogue: {', '.join(_genre_names())}.
 The user (@{viewer.username}) likes: {', '.join(favs) or 'unknown'}. Recently logged: {history}."""
 
 
+def _fallback_reason(row):
+    """Used when the model picked a book without saying why."""
+    bits = []
+    if row.get("categories"):
+        bits.append(f"a {row['categories'][0].lower()} match for your request")
+    if row.get("average_rating"):
+        bits.append(f"rated {float(row['average_rating']):.1f}★ by readers")
+    return ("Picked as " + " and ".join(bits) + ".") if bits else "Matched your request in the catalogue."
+
+
 def _jsonable(row):
     return {k: (v if isinstance(v, (str, int, float, bool, list, type(None))) else str(v)) for k, v in row.items()}
 
@@ -296,7 +306,8 @@ def send_message(viewer, content, session_id=None):
             continue
         seen.add(p["book_id"])
         row = {k: v for k, v in found[p["book_id"]].items() if k != "description"}
-        cards.append(_jsonable({**row, "reason": p.get("reason")}))
+        reason = (p.get("reason") or "").strip() or _fallback_reason(row)
+        cards.append(_jsonable({**row, "reason": reason}))
 
     now = mongo.now()
     doc["messages"] += [

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from app import graph, mongo, sync_worker  # noqa: E402
 from app.database import db  # noqa: E402
 from app.deps import viewer_optional  # noqa: E402
-from app.routes import admin, catalog, chat, diary, lists, users  # noqa: E402
+from app.routes import admin, catalog, chat, diary, discover, lists, reels, social, users  # noqa: E402
 
 app = FastAPI(
     title="BookLog API",
@@ -42,7 +42,7 @@ def shutdown_event():
     db.close()
 
 
-for r in (catalog, diary, lists, users, admin, chat):
+for r in (catalog, discover, diary, lists, users, admin, chat, reels, social):
     app.include_router(r.router)
 
 

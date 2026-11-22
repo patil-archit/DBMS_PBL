@@ -33,17 +33,17 @@ const DiaryList = ({ entries, editable = false, onChanged, emptyText = 'No books
     <div className="space-y-8">
       {groups.map((g) => (
         <section key={g.key}>
-          <h3 className="font-pixel text-2xl uppercase tracking-widest mb-3 bg-accent-navy text-white inline-block px-3">{g.key}</h3>
+          <h3 className="font-serif italic text-3xl mb-4 border-t border-border pt-3">{g.key}</h3>
           <ul className="space-y-3">
             {g.items.map((e) => (
-              <li key={e.entry_id} className="flex gap-4 bg-surface-white border-[3px] border-border shadow-brutal p-3">
+              <li key={e.entry_id} className="flex gap-4 bg-surface-white border border-border p-3">
                 <Cover book={e} />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <Link to={`/book/${encodeURIComponent(e.title)}`} className="font-black text-lg hover:text-accent-red truncate">
+                    <Link to={`/book/${encodeURIComponent(e.title)}`} className="font-medium text-lg hover:text-accent-red truncate">
                       {e.title}
                     </Link>
-                    <span className="text-sm font-bold text-text-muted">{formatDate(e.date_read)}</span>
+                    <span className="text-sm font-medium text-text-muted">{formatDate(e.date_read)}</span>
                   </div>
                   <p className="text-sm text-text-muted uppercase font-medium truncate">{e.authors?.join(', ')}</p>
                   <div className="flex items-center gap-2 mt-1">

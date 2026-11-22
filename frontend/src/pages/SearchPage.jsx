@@ -1,460 +1,233 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { Search, Loader2, AlertCircle, BookOpen, Users, Folder, UserCheck, Heart } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowUpRight, Check, Plus, X } from 'lucide-react';
 import BookCard from '../components/BookCard';
-import NeoButton from '../components/NeoButton';
-import { searchBooks, followAuthor, unfollowAuthor, getGenres, getLanguages } from '../services/api';
+import { cn } from '../components/NeoButton';
+import { EASE, ErrorBox, Page, Select, Tabs } from '../components/ui';
+import { followAuthor, getGenres, getLanguages, searchBooks, unfollowAuthor } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+const SUGGESTIONS = ['hary poter', 'tolkein', 'dystopian', 'agatha christy', 'sapiens', 'murakami', 'pride prejudice'];
+
+const AuthorRow = ({ author, onToggle, busy, signedIn }) => (
+  <div className="group grid grid-cols-12 items-center gap-4 py-4 border-b border-border">
+    <Link to={`/author/${encodeURIComponent(author.name)}`} className="col-span-2 sm:col-span-1">
+      {author.image_url ? (
+        <img src={author.image_url} alt="" className="w-12 h-12 rounded-full object-cover grayscale group-hover:grayscale-0 transition duration-500" />
+      ) : (
+        <span className="w-12 h-12 rounded-full bg-text-main text-bg-base flex items-center justify-center font-serif italic text-xl">{author.name[0]}</span>
+      )}
+    </Link>
+    <Link to={`/author/${encodeURIComponent(author.name)}`} className="col-span-10 sm:col-span-5 min-w-0">
+      <p className="font-wide font-medium text-[15px] truncate group-hover:text-accent-red transition-colors">{author.name}</p>
+      <p className="label mt-0.5">{author.book_count} books</p>
+    </Link>
+    <p className="hidden sm:block col-span-4 text-[12px] text-text-muted line-clamp-2">{author.description || 'No biography yet.'}</p>
+    <div className="col-span-12 sm:col-span-2 flex sm:justify-end">
+      <button
+        disabled={busy}
+        onClick={() => onToggle(author)}
+        className={cn('h-8 px-3.5 rounded-full border text-[12px] inline-flex items-center gap-1.5 transition-colors', author.is_followed ? 'bg-text-main text-bg-base border-text-main' : 'border-border hover:border-text-main')}
+      >
+        {author.is_followed ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+        {author.is_followed ? 'Following' : signedIn ? 'Follow' : 'Sign in to follow'}
+      </button>
+    </div>
+  </div>
+);
+
 const SearchPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
-  const genreFilter = searchParams.get('genre') || '';
-  const languageFilter = searchParams.get('language') || '';
-  const ratingFilter = searchParams.get('min_rating') || '';
-  const hasFilters = !!(genreFilter || languageFilter || ratingFilter);
+  const [params, setParams] = useSearchParams();
+  const q = params.get('q') || '';
+  const genre = params.get('genre') || '';
+  const language = params.get('language') || '';
+  const minRating = params.get('min_rating') || '';
+  const hasFilters = !!(genre || language || minRating);
+
+  const { currentUser, loginWithGoogle } = useAuth();
+  const [input, setInput] = useState(q);
+  const [results, setResults] = useState({ books: [], authors: [], genres: [] });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searched, setSearched] = useState(false);
+  const [ms, setMs] = useState(null);
+  const [tab, setTab] = useState('books');
+  const [busy, setBusy] = useState({});
   const [genreOptions, setGenreOptions] = useState([]);
   const [languageOptions, setLanguageOptions] = useState([]);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     getGenres().then(setGenreOptions).catch(() => {});
     getLanguages().then(setLanguageOptions).catch(() => {});
+    inputRef.current?.focus();
   }, []);
 
-  const setFilter = (key, value) => {
-    const next = Object.fromEntries(searchParams.entries());
-    if (value) next[key] = value;
-    else delete next[key];
-    setSearchParams(next);
+  const setParam = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next, { replace: true });
   };
-  
-  const { currentUser, loginWithGoogle } = useAuth();
-  const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState({ books: [], authors: [], genres: [] });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [activeTab, setActiveTab] = useState('all');
-  const [actionLoading, setActionLoading] = useState({});
+
+  // Live search: typing updates ?q= after a short pause
+  useEffect(() => {
+    const id = setTimeout(() => { if (input.trim() !== q) setParam('q', input.trim()); }, 260);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input]);
 
   useEffect(() => {
-    if (initialQuery || hasFilters) {
-      performSearch(initialQuery);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery, genreFilter, languageFilter, ratingFilter, currentUser]); // Re-search when user changes to fetch correct follow state
-
-  const performSearch = async (searchQuery) => {
-    if (!searchQuery.trim() && !hasFilters) return;
-    
-    setIsLoading(true);
+    if (!q.trim() && !hasFilters) { setSearched(false); setResults({ books: [], authors: [], genres: [] }); return undefined; }
+    let live = true;
+    setLoading(true);
     setError(null);
-    setHasSearched(true);
-    
+    const t0 = performance.now();
+    searchBooks(q, { genre: genre || undefined, language: language || undefined, min_rating: minRating || undefined })
+      .then((data) => {
+        if (!live) return;
+        setResults(data);
+        setMs(Math.round(performance.now() - t0));
+        setSearched(true);
+        if (!data.books.length && data.authors.length) setTab('authors');
+        else setTab('books');
+      })
+      .catch(() => live && setError('Search failed. Please try again.'))
+      .finally(() => live && setLoading(false));
+    return () => { live = false; };
+  }, [q, genre, language, minRating, hasFilters, currentUser]);
+
+  const toggleFollow = async (author) => {
+    if (!currentUser) { loginWithGoogle(); return; }
+    setBusy((b) => ({ ...b, [author.name]: true }));
     try {
-      const filters = {};
-      if (genreFilter) filters.genre = genreFilter;
-      if (languageFilter) filters.language = languageFilter;
-      if (ratingFilter) filters.min_rating = ratingFilter;
-      const data = await searchBooks(searchQuery, filters);
-      setResults(data);
-    } catch (err) {
-      setError('Search failed. Please try again.');
-      console.error(err);
+      await (author.is_followed ? unfollowAuthor(author.name) : followAuthor(author.name));
+      setResults((r) => ({ ...r, authors: r.authors.map((a) => (a.name === author.name ? { ...a, is_followed: !a.is_followed } : a)) }));
     } finally {
-      setIsLoading(false);
+      setBusy((b) => ({ ...b, [author.name]: false }));
     }
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (query !== initialQuery) {
-      setFilter('q', query.trim());
-    } else {
-      performSearch(query);
-    }
-  };
-
-  const handleFollowToggle = async (e, authorName, isCurrentlyFollowed) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!currentUser) {
-      try {
-        await loginWithGoogle();
-        return; // Return and let useEffect refetch with authenticated follow status
-      } catch (err) {
-        console.error("Login failed:", err);
-        return;
-      }
-    }
-
-    setActionLoading(prev => ({ ...prev, [authorName]: true }));
-    try {
-      if (isCurrentlyFollowed) {
-        await unfollowAuthor(authorName);
-      } else {
-        await followAuthor(authorName);
-      }
-      
-      // Update local state instantaneously
-      setResults(prev => ({
-        ...prev,
-        authors: prev.authors.map(a => 
-          a.name === authorName ? { ...a, is_followed: !isCurrentlyFollowed } : a
-        )
-      }));
-    } catch (err) {
-      console.error("Failed to toggle follow status:", err);
-    } finally {
-      setActionLoading(prev => ({ ...prev, [authorName]: false }));
-    }
-  };
-
-  const handleGenreClick = (genreName) => {
-    setQuery('');
-    setSearchParams({ genre: genreName });
-  };
-
-  const colorPalettes = ['white', 'red', 'blue', 'teal'];
-  const hasResults = results.books.length > 0 || results.authors.length > 0 || results.genres.length > 0;
+  const total = results.books.length + results.authors.length + results.genres.length;
 
   return (
-    <div className="min-h-screen bg-bg-base py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Search Header */}
-        <div className="mb-12">
-          <h1 className="text-5xl md:text-7xl font-black mb-8 text-text-main flex items-center">
-            <span className="font-pixel text-accent-red mr-4">_</span> Explore
-          </h1>
-          
-          <form onSubmit={handleSearchSubmit} className="relative flex flex-col md:flex-row gap-4">
-            <div className="relative flex-grow">
-              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <Search className="h-7 w-7 text-text-main" strokeWidth={3} />
-              </div>
-              <input
-                type="text"
-                className="w-full pl-16 pr-6 py-5 bg-surface-white border-[3px] border-border shadow-brutal text-xl md:text-2xl font-bold placeholder-text-muted focus:outline-none focus:shadow-brutal-hover focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
-                placeholder="Search books, authors, genres or ISBN..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <NeoButton type="submit" size="lg" variant="navy" className="md:w-48 text-xl" disabled={isLoading}>
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Search'}
-            </NeoButton>
-          </form>
+    <Page>
+      <div className="flex justify-between border-t border-border pt-3 mb-8">
+        <span className="label">( Search ) titles, authors, genres or ISBN</span>
+        <span className="label tabular-nums">
+          {loading ? 'Searching…' : searched ? `${total} results${ms !== null ? ` · ${ms} ms` : ''}` : 'Spelling mistakes allowed'}
+        </span>
+      </div>
 
-          {/* Filters */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <span className="font-pixel text-xl uppercase tracking-widest">Filter:</span>
-            <select
-              aria-label="Genre"
-              value={genreFilter}
-              onChange={(e) => setFilter('genre', e.target.value)}
-              className="px-3 py-2 border-[3px] border-border bg-surface-white font-bold shadow-brutal max-w-[14rem]"
-            >
-              <option value="">All genres</option>
-              {genreOptions.map((g) => (
-                <option key={g.genre_id} value={g.name}>{g.name} ({g.book_count})</option>
-              ))}
-            </select>
-            <select
-              aria-label="Language"
-              value={languageFilter}
-              onChange={(e) => setFilter('language', e.target.value)}
-              className="px-3 py-2 border-[3px] border-border bg-surface-white font-bold shadow-brutal"
-            >
-              <option value="">Any language</option>
-              {languageOptions.map((l) => (
-                <option key={l.language} value={l.language}>{l.language.toUpperCase()} ({l.book_count})</option>
-              ))}
-            </select>
-            <select
-              aria-label="Minimum rating"
-              value={ratingFilter}
-              onChange={(e) => setFilter('min_rating', e.target.value)}
-              className="px-3 py-2 border-[3px] border-border bg-surface-white font-bold shadow-brutal"
-            >
-              <option value="">Any rating</option>
-              {[4.5, 4, 3.5, 3].map((r) => <option key={r} value={r}>{r}+ stars</option>)}
-            </select>
-            {hasFilters && (
-              <button className="font-bold underline" onClick={() => setSearchParams(initialQuery ? { q: initialQuery } : {})}>
-                Clear filters
-              </button>
-            )}
-          </div>
-        </div>
+      {/* Giant input */}
+      <form onSubmit={(e) => { e.preventDefault(); setParam('q', input.trim()); }} className="relative">
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type anything…"
+          aria-label="Search"
+          className="w-full bg-transparent font-wide font-medium text-[clamp(2rem,6.5vw,6rem)] leading-none pb-4 outline-none placeholder:text-text-main/15 border-b border-text-main"
+        />
+        {input && (
+          <button type="button" onClick={() => { setInput(''); setParam('q', ''); inputRef.current?.focus(); }} aria-label="Clear search" className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-border flex items-center justify-center hover:bg-text-main hover:text-bg-base transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <motion.span
+          className="absolute left-0 bottom-0 h-px bg-accent-red origin-left w-full"
+          animate={{ scaleX: loading ? [0, 1] : 0 }}
+          transition={{ duration: 0.8, ease: EASE, repeat: loading ? Infinity : 0 }}
+        />
+      </form>
 
-        {/* Status Messages */}
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="bg-accent-red border-[3px] border-border shadow-brutal p-6 mb-12 flex items-start text-white animate-bounce"
-            >
-              <AlertCircle className="w-8 h-8 mr-4 flex-shrink-0" strokeWidth={2.5} />
-              <div>
-                <h3 className="font-pixel text-xl tracking-widest uppercase mb-1">System Error</h3>
-                <p className="font-bold text-lg">{error}</p>
-              </div>
-            </motion.div>
-          )}
+      {/* Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-6">
+        <Select aria-label="Genre" value={genre} onChange={(e) => setParam('genre', e.target.value)}>
+          <option value="">All genres</option>
+          {genreOptions.map((g) => <option key={g.genre_id} value={g.name}>{g.name} ({g.book_count})</option>)}
+        </Select>
+        <Select aria-label="Language" value={language} onChange={(e) => setParam('language', e.target.value)}>
+          <option value="">Any language</option>
+          {languageOptions.map((l) => <option key={l.language} value={l.language}>{l.language.toUpperCase()} ({l.book_count})</option>)}
+        </Select>
+        <Select aria-label="Minimum rating" value={minRating} onChange={(e) => setParam('min_rating', e.target.value)}>
+          <option value="">Any rating</option>
+          {[4.5, 4, 3.5, 3].map((r) => <option key={r} value={r}>{r}+ stars</option>)}
+        </Select>
+        {hasFilters && (
+          <button className="label !text-accent-red text-left sm:text-center" onClick={() => setParams(q ? { q } : {}, { replace: true })}>Clear filters</button>
+        )}
+      </div>
 
-          {hasSearched && !isLoading && !hasResults && !error && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-surface-white border-[3px] border-border border-dashed p-16 text-center shadow-brutal"
-            >
-              <p className="font-pixel text-2xl text-text-muted tracking-widest uppercase">0 Matches</p>
-              <p className="text-xl font-bold mt-4">No matching books, authors, or genres found{initialQuery ? ` for "${initialQuery}"` : ' with these filters'}.</p>
-              <p className="text-md text-text-muted mt-2">Check the spelling or try fewer words. Small typos are handled automatically.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="mt-14">
+        <ErrorBox>{error}</ErrorBox>
 
-        {/* Search Content (Tabs & Grid) */}
-        {hasSearched && !isLoading && hasResults && (
+        {!searched && !loading && (
           <div>
-            {/* Tabs Navigation */}
-            <div className="flex flex-wrap gap-3 mb-10 border-b-[3px] border-border pb-6">
-              {[
-                { id: 'all', label: 'All Results', icon: <BookOpen className="w-5 h-5" /> },
-                { id: 'books', label: `Books (${results.books.length})`, icon: <BookOpen className="w-5 h-5 text-accent-red" /> },
-                { id: 'authors', label: `Authors (${results.authors.length})`, icon: <Users className="w-5 h-5 text-accent-teal" /> },
-                { id: 'genres', label: `Genres (${results.genres.length})`, icon: <Folder className="w-5 h-5 text-accent-blue" /> }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-3 border-[3px] border-border text-lg font-bold transition-all transform shadow-brutal hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-hover ${
-                    activeTab === tab.id 
-                      ? 'bg-accent-navy text-white -translate-x-[2px] -translate-y-[2px] shadow-brutal-lg' 
-                      : 'bg-surface-white text-text-main'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
+            <p className="label mb-4">Try a deliberately misspelled one</p>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} onClick={() => setInput(s)} className="h-10 px-4 rounded-full border border-border text-[14px] hover:bg-text-main hover:text-bg-base transition-colors inline-flex items-center gap-2">
+                  {s} <ArrowUpRight className="w-3.5 h-3.5 opacity-50" />
                 </button>
               ))}
             </div>
-
-            {/* TAB CONTENT: ALL */}
-            {activeTab === 'all' && (
-              <div className="space-y-12">
-                {/* Author Preview Section */}
-                {results.authors.length > 0 && (
-                  <div>
-                    <h2 className="text-3xl font-black text-text-main mb-6 flex items-center gap-2">
-                      <span className="font-pixel text-accent-teal">/</span> Matching Authors
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {results.authors.slice(0, 2).map((author, idx) => (
-                        <AuthorListItem 
-                          key={idx} 
-                          author={author} 
-                          onFollowToggle={handleFollowToggle}
-                          actionLoading={actionLoading[author.name]}
-                          currentUser={currentUser}
-                        />
-                      ))}
-                    </div>
-                    {results.authors.length > 2 && (
-                      <button 
-                        onClick={() => setActiveTab('authors')} 
-                        className="mt-4 text-lg font-bold text-accent-teal hover:underline flex items-center gap-1 font-pixel tracking-wider"
-                      >
-                        View all {results.authors.length} authors &rarr;
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Genre Preview Section */}
-                {results.genres.length > 0 && (
-                  <div>
-                    <h2 className="text-3xl font-black text-text-main mb-6 flex items-center gap-2">
-                      <span className="font-pixel text-accent-blue">#</span> Matching Genres
-                    </h2>
-                    <div className="flex flex-wrap gap-4">
-                      {results.genres.map((genre, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleGenreClick(genre.name)}
-                          className="bg-accent-blue/15 hover:bg-accent-blue/30 text-text-main px-6 py-4 border-[3px] border-border shadow-brutal hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] font-bold text-lg flex items-center gap-3 transition-all cursor-pointer"
-                        >
-                          <Folder className="w-6 h-6 text-accent-blue" strokeWidth={2.5} />
-                          <span>{genre.name}</span>
-                          <span className="bg-surface-white text-text-main border-2 border-border px-2 py-0.5 text-xs font-pixel">
-                            {genre.book_count} books
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Books Section */}
-                {results.books.length > 0 && (
-                  <div>
-                    <h2 className="text-3xl font-black text-text-main mb-6 flex items-center gap-2">
-                      <span className="font-pixel text-accent-red">_</span> Matching Books
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 gap-y-12">
-                      {results.books.map((book, idx) => (
-                        <BookCard
-                          key={book.book_id}
-                          book={book}
-                          source="search"
-                          colorScheme={colorPalettes[idx % colorPalettes.length]} 
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB CONTENT: BOOKS */}
-            {activeTab === 'books' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 gap-y-12">
-                {results.books.map((book, idx) => (
-                  <BookCard
-                    key={book.book_id}
-                    book={book}
-                    source="search"
-                    colorScheme={colorPalettes[idx % colorPalettes.length]} 
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* TAB CONTENT: AUTHORS */}
-            {activeTab === 'authors' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {results.authors.map((author, idx) => (
-                  <AuthorListItem 
-                    key={idx} 
-                    author={author} 
-                    onFollowToggle={handleFollowToggle}
-                    actionLoading={actionLoading[author.name]}
-                    currentUser={currentUser}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* TAB CONTENT: GENRES */}
-            {activeTab === 'genres' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {results.genres.map((genre, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleGenreClick(genre.name)}
-                    className="bg-surface-white border-[3px] border-border p-6 shadow-brutal hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer flex flex-col justify-between h-40 group"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="bg-accent-blue/15 border-2 border-border p-2 group-hover:bg-accent-blue/30 transition-all">
-                        <Folder className="w-8 h-8 text-accent-blue" strokeWidth={2.5} />
-                      </div>
-                      <span className="font-pixel text-xl bg-bg-base border-2 border-border px-3 py-1">
-                        {genre.book_count} books
-                      </span>
-                    </div>
-                    <h3 className="text-2xl font-black group-hover:text-accent-blue transition-colors">
-                      {genre.name}
-                    </h3>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
-      </div>
-    </div>
-  );
-};
 
-/* Neo-Brutalist Author List Item Component */
-const AuthorListItem = ({ author, onFollowToggle, actionLoading, currentUser }) => {
-  const bioSnippet = author.description 
-    ? (author.description.length > 140 ? author.description.slice(0, 140) + "..." : author.description)
-    : "No biography available yet.";
-
-  return (
-    <div className="bg-surface-white border-[3px] border-border p-6 shadow-brutal hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex flex-col sm:flex-row gap-6 relative overflow-hidden">
-      {/* Author Image Frame */}
-      <Link to={`/author/${author.name}`} className="w-28 h-28 sm:w-36 sm:h-36 border-[3px] border-border bg-bg-base overflow-hidden flex-shrink-0 shadow-brutal transform rotate-2 hover:rotate-0 transition-transform">
-        {author.image_url ? (
-          <img 
-            src={author.image_url} 
-            alt={author.name} 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-accent-teal/10 font-pixel text-4xl text-accent-teal">
-            {author.name.charAt(0)}
+        {searched && !loading && total === 0 && !error && (
+          <div className="py-20 text-center">
+            <p className="font-serif italic text-5xl">Nothing matched.</p>
+            <p className="text-text-muted mt-3">Check the spelling or use fewer words. Small typos are handled automatically.</p>
           </div>
         )}
-      </Link>
 
-      {/* Author Text & Action */}
-      <div className="flex-grow flex flex-col justify-between">
-        <div>
-          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-            <Link to={`/author/${author.name}`} className="hover:text-accent-teal transition-colors">
-              <h3 className="text-2xl font-black">{author.name}</h3>
-            </Link>
-            <span className="bg-bg-base border-2 border-border px-2.5 py-0.5 text-sm font-pixel font-bold">
-              {author.book_count} Books
-            </span>
-          </div>
-          <p className="text-text-muted font-medium text-sm leading-relaxed mb-4">
-            {bioSnippet}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link to={`/author/${author.name}`}>
-            <NeoButton size="sm" variant="white">
-              View Profile
-            </NeoButton>
-          </Link>
-
-          <button
-            disabled={actionLoading}
-            onClick={(e) => onFollowToggle(e, author.name, author.is_followed)}
-            className={`flex items-center gap-2 border-2 border-border px-4 py-2 text-sm font-bold shadow-brutal hover:shadow-brutal-hover hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer ${
-              author.is_followed 
-                ? 'bg-accent-teal text-white' 
-                : 'bg-surface-white text-text-main hover:bg-accent-teal/10'
-            }`}
-          >
-            {actionLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : author.is_followed ? (
-              <>
-                <UserCheck className="w-4 h-4" />
-                <span>Followed</span>
-              </>
-            ) : (
-              <>
-                <Heart className="w-4 h-4" />
-                <span>{currentUser ? 'Follow' : 'Login to Follow'}</span>
-              </>
+        {searched && total > 0 && (
+          <>
+            {results.genres.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-10">
+                <span className="label mr-2">Genres</span>
+                {results.genres.map((g) => (
+                  <Link key={g.name} to={`/explore?genre=${encodeURIComponent(g.name)}`} className="h-9 px-4 rounded-full border border-border text-[13px] inline-flex items-center gap-2 hover:bg-text-main hover:text-bg-base transition-colors">
+                    {g.name} <span className="opacity-50 text-[11px]">{g.book_count}</span>
+                  </Link>
+                ))}
+              </div>
             )}
-          </button>
-        </div>
+
+            <Tabs
+              tabs={[
+                { id: 'books', label: 'Books', count: results.books.length },
+                { id: 'authors', label: 'Authors', count: results.authors.length },
+              ]}
+              active={tab}
+              onChange={setTab}
+            />
+
+            {tab === 'books' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-12">
+                {results.books.map((b, i) => (
+                  <motion.div key={b.book_id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE, delay: Math.min(i, 12) * 0.03 }}>
+                    <BookCard book={b} source="search" />
+                  </motion.div>
+                ))}
+                {!results.books.length && <p className="label col-span-full">No books, but see the authors tab.</p>}
+              </div>
+            )}
+
+            {tab === 'authors' && (
+              <div className="border-t border-border">
+                {results.authors.map((a) => (
+                  <AuthorRow key={a.name} author={a} onToggle={toggleFollow} busy={busy[a.name]} signedIn={!!currentUser} />
+                ))}
+                {!results.authors.length && <p className="label py-6">No matching authors.</p>}
+              </div>
+            )}
+          </>
+        )}
       </div>
-      
-    </div>
+    </Page>
   );
 };
 

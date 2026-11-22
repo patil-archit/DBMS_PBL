@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getFollowers, getFollowing, getSuggestions, searchPeople } from '../services/api';
 
 const PersonRow = ({ p, extra }) => (
-  <li className="flex items-center gap-3 bg-surface-white border-[3px] border-border p-3">
+  <li className="flex items-center gap-3 bg-surface-white border border-border p-3">
     <Avatar username={p.username} />
     <div className="flex-1 min-w-0">
       <UserLink username={p.username} />
@@ -41,14 +41,14 @@ const NetworkGraph = ({ me, following, followers }) => {
   }, [me, following, followers]);
 
   return (
-    <div ref={box} className="border-[3px] border-border bg-bg-base h-80 overflow-hidden">
+    <div ref={box} className="border border-border bg-bg-base h-80 overflow-hidden">
       <ForceGraph2D
         graphData={data}
         width={width}
         height={314}
         linkDirectionalArrowLength={5}
         linkDirectionalArrowRelPos={1}
-        linkColor={() => '#111'}
+        linkColor={() => '#2B1B14'}
         onNodeClick={(n) => !n.me && navigate(`/u/${n.id}`)}
         nodeCanvasObject={(node, ctx, scale) => {
           const label = `@${node.id}`;
@@ -58,7 +58,7 @@ const NetworkGraph = ({ me, following, followers }) => {
           const h = size * 1.6;
           ctx.fillStyle = node.me ? '#DF6A61' : '#4B9F9F';
           ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h);
-          ctx.strokeStyle = '#111';
+          ctx.strokeStyle = '#2B1B14';
           ctx.lineWidth = 2 / scale;
           ctx.strokeRect(node.x - w / 2, node.y - h / 2, w, h);
           ctx.fillStyle = '#fff';
@@ -96,7 +96,7 @@ const PeoplePage = () => {
   if (!me) {
     return (
       <Page className="text-center">
-        <PageTitle>People</PageTitle>
+        <PageTitle kicker="( People ) Neo4j social graph">People</PageTitle>
         <NeoButton variant="primary" onClick={loginWithGoogle}>Sign in to find readers</NeoButton>
       </Page>
     );
@@ -104,7 +104,7 @@ const PeoplePage = () => {
 
   return (
     <Page>
-      <PageTitle mark="@" color="text-accent-teal">People</PageTitle>
+      <PageTitle kicker="( People ) friends of friends, taste match and steps apart, from Neo4j">People</PageTitle>
       <div className="grid lg:grid-cols-[1fr_380px] gap-10">
         <div className="min-w-0">
           <form onSubmit={search} className="flex gap-3 mb-8">
@@ -150,12 +150,12 @@ const PeoplePage = () => {
 
         <aside className="space-y-6">
           <Card>
-            <h3 className="font-black text-xl mb-1">Your friend code</h3>
-            <p className="font-pixel text-4xl tracking-widest">{me.friend_code}</p>
+            <h3 className="font-medium text-xl mb-1">Your friend code</h3>
+            <p className="display-num text-5xl tracking-[0.05em]">{me.friend_code}</p>
             <p className="text-sm text-text-muted font-medium">Share it so friends can find you, or tell them your username @{me.username}.</p>
           </Card>
           <div>
-            <h3 className="font-black text-xl mb-3">Your network</h3>
+            <h3 className="font-medium text-xl mb-3">Your network</h3>
             <NetworkGraph me={me.username} following={following} followers={followers} />
             {suggestions?.source && (
               <p className="text-xs text-text-muted mt-2 font-medium">Suggestions computed with {suggestions.source === 'neo4j' ? 'Neo4j' : 'PostgreSQL (Neo4j offline)'}.</p>

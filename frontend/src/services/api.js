@@ -39,6 +39,31 @@ export const getBookReviews = (bookId) => data(api.get(`/books/${bookId}/reviews
 export const getPersonalizedRecommendations = (refresh = false) => data(api.get('/recommendations', { params: { refresh } }));
 export const logClick = (bookId, source) => api.post('/activity/click', { book_id: bookId, source }).catch(() => {});
 
+// ---------------- Discover ----------------
+export const browseBooks = (params) => data(api.get('/discover/browse', { params }));
+export const getGenreIndex = () => data(api.get('/discover/genres'));
+export const getRandomBook = (genre) => data(api.get('/discover/random', { params: genre ? { genre } : {} }));
+export const getBookOfTheDay = () => data(api.get('/discover/today'));
+export const getCatalogueStats = () => data(api.get('/discover/stats'));
+export const getReels = (mode = 'for_you', genre) => data(api.get('/reels', { params: { mode, ...(genre ? { genre } : {}) } }));
+export const getBookTakes = (bookId) => data(api.get(`/books/${bookId}/takes`));
+export const postTake = (bookId, text, vibe) => data(api.post('/takes', { book_id: bookId, text, vibe }));
+export const likeTake = (takeId) => data(api.post(`/takes/${takeId}/like`));
+export const deleteTake = (takeId) => api.delete(`/takes/${takeId}`);
+export const getFeaturedAuthors = (limit = 14) => data(api.get('/discover/authors', { params: { limit } }));
+export const getJournal = (limit = 6) => data(api.get('/discover/journal', { params: { limit } }));
+export const getPulse = () => data(api.get('/me/pulse'));
+export const getThreads = () => data(api.get('/messages'));
+export const getContacts = () => data(api.get('/messages/contacts'));
+export const getConversation = (username) => data(api.get(`/messages/${enc(username)}`));
+export const sendMessage = (username, text, bookId) => data(api.post(`/messages/${enc(username)}`, { text: text || null, book_id: bookId || null }));
+export const markThreadRead = (username) => data(api.post(`/messages/${enc(username)}/read`));
+export const getNotifications = () => data(api.get('/notifications'));
+export const markNotificationsSeen = () => api.post('/notifications/seen');
+export const getReadingNow = () => data(api.get('/people/reading-now'));
+export const getReadersNow = (bookId) => data(api.get(`/books/${bookId}/readers-now`));
+export const getReadingStats = (username, year) => data(api.get(`/users/${enc(username)}/stats`, { params: year ? { year } : {} }));
+
 // ---------------- Authors ----------------
 export const getAuthor = (name) => data(api.get(`/author/${enc(name)}`));
 export const followAuthor = (name) => data(api.post('/author/follow', { author_name: name }));

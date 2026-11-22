@@ -37,12 +37,12 @@ const ReviewCard = ({ review }) => {
   };
 
   return (
-    <article className="bg-surface-white border-[3px] border-border shadow-brutal p-5">
+    <article className="border-t border-border pt-5 pb-2">
       <header className="flex flex-wrap items-center gap-3 mb-3">
         <Avatar username={review.username} />
         <div className="min-w-0">
           <UserLink username={review.username} />
-          <div className="text-sm text-text-muted">{formatDate(review.date_read || review.created_at)}</div>
+          <div className="label">{formatDate(review.date_read || review.created_at)}</div>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Stars value={review.rating} />
@@ -50,11 +50,11 @@ const ReviewCard = ({ review }) => {
         </div>
       </header>
       {review.review_text ? (
-        <p className="text-lg font-medium whitespace-pre-wrap break-words">{review.review_text}</p>
+        <p className="font-serif text-[1.35rem] leading-[1.35] whitespace-pre-wrap break-words">“{review.review_text}”</p>
       ) : (
-        <p className="text-text-muted italic">Rated without a review.</p>
+        <p className="text-text-muted font-serif italic text-lg">Rated without a review.</p>
       )}
-      <footer className="flex flex-wrap items-center gap-4 mt-4 text-sm font-bold">
+      <footer className="flex flex-wrap items-center gap-4 mt-4 text-[12px]">
         <button onClick={toggleLike} aria-pressed={likes.liked} className={cn('flex items-center gap-1', likes.liked && 'text-accent-red')}>
           <Heart className={cn('w-4 h-4', likes.liked && 'fill-current')} /> {likes.count}
         </button>

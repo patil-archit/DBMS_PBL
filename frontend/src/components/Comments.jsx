@@ -42,7 +42,7 @@ const Comments = ({ load, post, onCountChange }) => {
   };
 
   return (
-    <div className="border-t-2 border-border pt-4 mt-4">
+    <div className="border-t border-border pt-4 mt-4">
       <ErrorBox>{error}</ErrorBox>
       {comments?.length === 0 && <p className="text-text-muted text-sm mb-3">No comments yet.</p>}
       <ul className="space-y-3 mb-4">
@@ -70,7 +70,7 @@ const Comments = ({ load, post, onCountChange }) => {
           <NeoButton type="submit" variant="navy" size="sm" disabled={sending || !text.trim()}>Post</NeoButton>
         </form>
       ) : (
-        <button onClick={loginWithGoogle} className="font-bold underline">Sign in to comment</button>
+        <button onClick={loginWithGoogle} className="font-medium underline">Sign in to comment</button>
       )}
     </div>
   );

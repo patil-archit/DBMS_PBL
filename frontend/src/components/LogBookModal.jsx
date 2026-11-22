@@ -59,7 +59,7 @@ const LogBookModal = ({ open, onClose, book, entry, onSaved }) => {
           onClick={() => setLiked(!liked)}
           aria-pressed={liked}
           className={cn(
-            'mb-4 flex items-center gap-2 px-4 py-3 border-[3px] border-border font-bold shadow-brutal',
+            'mb-4 flex items-center gap-2 px-4 py-3 border border-border font-medium',
             liked ? 'bg-accent-red text-white' : 'bg-surface-white'
           )}
         >

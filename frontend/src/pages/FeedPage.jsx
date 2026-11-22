@@ -18,7 +18,7 @@ const FeedPage = () => {
   if (!currentUser) {
     return (
       <Page className="text-center">
-        <PageTitle>Activity</PageTitle>
+        <PageTitle kicker="( Feed ) people you follow">Activity</PageTitle>
         <NeoButton onClick={loginWithGoogle} variant="primary">Sign in to see what people you follow are reading</NeoButton>
       </Page>
     );
@@ -27,15 +27,15 @@ const FeedPage = () => {
 
   return (
     <Page className="max-w-3xl">
-      <PageTitle mark="»" color="text-accent-teal">Activity</PageTitle>
+      <PageTitle kicker="( Feed ) what people you follow logged, rated and listed">Activity</PageTitle>
       {items.length === 0 ? (
         <Empty title="Quiet in here">
-          Follow some readers on the <Link to="/people" className="underline font-bold">People</Link> page to see what they log, rate and list.
+          Follow some readers on the <Link to="/people" className="underline font-medium">People</Link> page to see what they log, rate and list.
         </Empty>
       ) : (
         <ul className="space-y-4">
           {items.map((it, i) => (
-            <li key={`${it.kind}-${it.entry_id || it.list_id}-${it.book_id}-${i}`} className="flex gap-4 bg-surface-white border-[3px] border-border shadow-brutal p-4">
+            <li key={`${it.kind}-${it.entry_id || it.list_id}-${it.book_id}-${i}`} className="flex gap-4 bg-surface-white border border-border p-4">
               <Avatar username={it.username} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium">
@@ -43,13 +43,13 @@ const FeedPage = () => {
                   {it.kind === 'logged' ? (
                     <>
                       {it.review_text ? 'reviewed' : it.rating ? 'rated' : 'logged'}{' '}
-                      <Link to={`/book/${encodeURIComponent(it.title)}`} className="font-black hover:text-accent-red">{it.title}</Link>
+                      <Link to={`/book/${encodeURIComponent(it.title)}`} className="font-medium hover:text-accent-red">{it.title}</Link>
                     </>
                   ) : (
                     <>
                       <ListPlus className="inline w-4 h-4" /> added{' '}
-                      <Link to={`/book/${encodeURIComponent(it.title)}`} className="font-black hover:text-accent-red">{it.title}</Link> to{' '}
-                      <Link to={`/lists/${it.list_id}`} className="font-black underline">{it.list_name}</Link>
+                      <Link to={`/book/${encodeURIComponent(it.title)}`} className="font-medium hover:text-accent-red">{it.title}</Link> to{' '}
+                      <Link to={`/lists/${it.list_id}`} className="font-medium underline">{it.list_name}</Link>
                     </>
                   )}
                   <span className="text-text-muted text-sm ml-2">{timeAgo(it.ts)}</span>

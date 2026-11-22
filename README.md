@@ -2,17 +2,21 @@
 
 A social book diary and recommendation system. Log books with ratings and reviews, keep shelves and lists, follow other readers, get recommendations that explain themselves, and ask a chatbot for books in plain language.
 
-**Stack:** PostgreSQL 15+ (main database) · Neo4j 5 (social graph) · MongoDB (logs, chat, cached recommendations) · FastAPI · React 19 + Vite + Tailwind · Firebase Auth · OpenAI (chatbot)
+**Stack:** PostgreSQL 15+ (main database) · Neo4j 5 (social graph) · MongoDB (logs, chat, cached recommendations) · FastAPI · React 19 + Vite + Tailwind · Framer Motion + Lenis · Firebase Auth · OpenAI (chatbot)
 
 ## Features
 
 **Account**: Google sign-in, unique username, bio, language, private diary, favourite genres (asked on first sign-in), export all your data as JSON, delete your account and everything in it. Roles: reader, moderator, admin.
 
-**Books & search**: search by title, author, genre or ISBN with spelling mistakes allowed (pg_trgm), filter by genre, language and minimum rating. Book pages show details, average rating, reviews, similar books and which people you follow have read it.
+**Books & search**: a catalogue of 20,000+ books with covers, descriptions, authors (bios and photos) and publishers. Live search as you type by title, author, genre or ISBN with spelling mistakes allowed (pg_trgm), filter by genre, language and minimum rating; the page shows how many milliseconds PostgreSQL took. A **⌘K / Ctrl+K command palette** searches from anywhere. Book pages show details, reading time, average rating, reviews, similar books (with the scoring explained) and which people you follow have read it; the page tints itself with colours pulled from the cover.
+
+**Explore**: browse the whole catalogue with infinite scroll, filtered by genre, decade, length and rating and sorted by most read, highest rated, newest, oldest, shortest or longest. "Spin the shelf" picks a random well-rated book. The home page has a book of the day, the catalogue in numbers (books per decade of publication) and a genre index.
 
 **Diary, shelves, lists**: log a book with date, half-star rating (0.5 to 5), review and a like; edit or delete entries; re-reads are separate entries. Want to Read and Reading Now shelves. Yearly reading goal with progress. Public or private ranked lists you can re-order. Like and comment on reviews and lists. Report reviews to moderators.
 
 **Social**: follow / unfollow, followers and following, activity feed (what people you follow logged, rated, reviewed and listed), people you may know (friends of friends), taste match % and how many steps apart two readers are (Neo4j).
+
+**Year in books**: every reader gets a stats page (`/u/<username>/stats`, by year or all time): books, pages, reviews, re-reads, books per month, rating spread, favourite genres and authors, how their ratings compare with everyone else's, and highlights (top rated, longest, shortest, oldest, hidden gem). It reads the diary under row-level security, so private diaries stay private.
 
 **Recommendations**: from your highly rated books, readers with similar taste (Neo4j), people you follow, authors you follow, your favourite genres and trending books (MongoDB). Every recommendation says why.
 
@@ -21,6 +25,12 @@ A social book diary and recommendation system. Log books with ratings and review
 **Admin & moderation**: add, edit and delete books, authors and genres (with parent genres); moderators handle reported reviews; reports on most read books, most active users and genre trends (materialized views); audit log of important changes; role management; sync status.
 
 Not built (left out on purpose): predicted ratings and automatic theme/mood tagging (ML).
+
+## Design
+
+Editorial and quiet: a grey canvas, tiny grotesk labels (Inter Tight), wide display caps (Archivo Expanded) and a serif for big moments (Instrument Serif), with one red accent. Light and dark mode. The logo is a solid "B" split into a spine and a block of pages, with a red bookmark ribbon (`frontend/src/components/Logo.jsx`, `frontend/public/favicon.svg`).
+
+Motion: an intro that draws the mark and wipes away, smooth scrolling (Lenis), page transitions, a custom cursor that labels covers, 3D covers that tilt toward the pointer, and a scroll-driven showcase on the home page (covers fly through 3D space, a rolling counter, a list that blurs everything but the focused book, and colour swatches extracted from each cover). Everything respects `prefers-reduced-motion`.
 
 ## How the three databases work together
 
@@ -73,7 +83,7 @@ backend/venv/bin/python backend/db/seed_from_csv.py
 backend/venv/bin/python backend/db/import_openlibrary.py
 ```
 
-`seed_from_csv.py` drops and recreates everything, runs the migrations (including creating the `booklog_app` role) and loads the CSV catalogue. `import_openlibrary.py` adds ~2,100 more books with covers, author bios and photos. Both run as your own Postgres account.
+`seed_from_csv.py` drops and recreates everything, runs the migrations (including creating the `booklog_app` role) and loads the CSV catalogue. `import_openlibrary.py` adds books from Open Library across ~100 subjects with covers, descriptions, author bios and photos (`--per-genre 300 --pages 6 --workers 8` gives 20,000+; API responses are cached, so re-runs are fast). Both run as your own Postgres account.
 
 ### 3. Backend
 
@@ -121,7 +131,7 @@ Files that are **not** in git and must be sent privately: `backend/.env` (each p
 
 ## Tests and demo
 
-End-to-end API test (54 checks, runs against a copy of the database):
+End-to-end API test (94 checks, runs against a copy of the database):
 
 ```bash
 dropdb --if-exists booklog_test && createdb booklog_test && pg_dump booklog | psql -q booklog_test
@@ -154,12 +164,15 @@ backend/
   app/graph.py                  Neo4j queries
   app/mongo.py                  MongoDB collections
   app/sync_worker.py            outbox worker
-  app/services/                 book, diary, list, user, admin, chat logic
+  app/services/                 book, discover, diary, list, user, admin, chat logic
   app/routes/                   API routes
   tests/test_api.py             end-to-end test
 frontend/src/
-  pages/                        Home, Search, Book, Author, My Books, Lists, List,
-                                Feed, People, Profile, Settings, Assistant, Admin
+  pages/                        Home, Explore, Search, Book, Author, My Books, Lists, List,
+                                Feed, People, Profile, Year in books, Settings, Assistant, Admin
+  components/shell.jsx          intro, smooth scroll, cursor, page transitions, ⌘K palette, theme
+  components/Logo.jsx           the BookLog mark and wordmark
   components/                   shared UI, modals, review cards, goal widget...
+  utils/colors.js               colour palette extraction from covers
   services/api.js               API client
 ```

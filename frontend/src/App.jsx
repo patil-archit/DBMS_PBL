@@ -1,33 +1,59 @@
-import React from 'react';
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import Navbar, { NAV } from './components/Navbar';
+import Footer from './components/Footer';
+import { CommandPalette, Cursor, Intro, PageTransition, SmoothScroll } from './components/shell';
 import { OnboardingGate } from './components/GenrePicker';
 import HomePage from './pages/HomePage';
+import LandingPage from './pages/LandingPage';
+import ExplorePage from './pages/ExplorePage';
 import SearchPage from './pages/SearchPage';
 import BookDetailsPage from './pages/BookDetailsPage';
 import AuthorDetailsPage from './pages/AuthorDetailsPage';
-import MyLibraryPage from './pages/MyLibraryPage';
 import ListsPage, { NewListPage } from './pages/ListsPage';
-import ListDetailPage from './pages/ListDetailPage';
-import FeedPage from './pages/FeedPage';
-import PeoplePage from './pages/PeoplePage';
-import ProfilePage from './pages/ProfilePage';
-import SettingsPage from './pages/SettingsPage';
-import ChatPage from './pages/ChatPage';
-import AdminPage from './pages/AdminPage';
 import { AuthProvider } from './contexts/AuthContext';
+import { PulseProvider } from './components/social';
+import { Spinner } from './components/ui';
 
-function App() {
+// Heavier, signed-in pages load on demand
+const MyLibraryPage = lazy(() => import('./pages/MyLibraryPage'));
+const ListDetailPage = lazy(() => import('./pages/ListDetailPage'));
+const FeedPage = lazy(() => import('./pages/FeedPage'));
+const PeoplePage = lazy(() => import('./pages/PeoplePage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const StatsPage = lazy(() => import('./pages/StatsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const ReelsPage = lazy(() => import('./pages/ReelsPage'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const QuizPage = lazy(() => import('./pages/QuizPage'));
+
+function Shell() {
+  const { pathname } = useLocation();
+  // The landing page is a full-screen cover with its own intro
+  if (pathname === '/') return <><Cursor /><LandingPage /></>;
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen flex flex-col bg-bg-base font-main text-text-main selection:bg-accent-teal selection:text-white">
-          <Navbar />
-          <OnboardingGate />
+    <>
+      <SmoothScroll />
+      <Intro />
+      <Cursor />
+      <CommandPalette links={NAV} />
+      <div className="grain min-h-screen flex flex-col bg-bg-base font-main text-text-main">
+        <Navbar />
+        <OnboardingGate />
 
-          <main className="flex-grow">
+        <main className={pathname === '/home' ? 'flex-grow' : 'flex-grow pt-[96px]'}>
+          <PageTransition>
+            <Suspense fallback={<Spinner />}>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/reels" element={<ReelsPage />} />
+              <Route path="/shuffle" element={<Navigate to="/reels" replace />} />
+              <Route path="/quiz" element={<QuizPage />} />
+              <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/messages/:username" element={<MessagesPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/book/:title" element={<BookDetailsPage />} />
               <Route path="/author/:name" element={<AuthorDetailsPage />} />
@@ -39,24 +65,29 @@ function App() {
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/friends" element={<Navigate to="/people" replace />} />
               <Route path="/u/:username" element={<ProfilePage />} />
+              <Route path="/u/:username/stats" element={<StatsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/admin" element={<AdminPage />} />
-              <Route path="*" element={<HomePage />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
-          </main>
+            </Suspense>
+          </PageTransition>
+        </main>
 
-          <footer className="border-t-[3px] border-border bg-accent-navy text-white py-12 mt-auto relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between z-10 relative">
-              <div className="mb-8 md:mb-0">
-                <span className="font-extrabold text-3xl tracking-tight leading-none text-white block mb-2">Book<span className="font-pixel text-4xl text-accent-red">Log</span></span>
-                <p className="text-gray-400 font-medium">PostgreSQL · Neo4j · MongoDB · FastAPI</p>
-              </div>
-              <p className="font-pixel tracking-widest uppercase text-gray-300">A social book diary</p>
-            </div>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-accent-red/20 rounded-full blur-3xl -z-0 translate-x-1/2 -translate-y-1/2"></div>
-          </footer>
-        </div>
+        <Footer />
+      </div>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <PulseProvider>
+          <Shell />
+        </PulseProvider>
       </Router>
     </AuthProvider>
   );

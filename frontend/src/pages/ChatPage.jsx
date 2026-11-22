@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Loader2, MessageSquarePlus, Send, Trash2 } from 'lucide-react';
+import { Loader2, MessageSquarePlus, Send, Trash2 } from 'lucide-react';
 import NeoButton, { cn } from '../components/NeoButton';
 import BookCard from '../components/BookCard';
 import { ErrorBox, Page, PageTitle, Spinner, timeAgo } from '../components/ui';
@@ -83,7 +83,7 @@ const ChatPage = () => {
   if (!me) {
     return (
       <Page className="text-center">
-        <PageTitle>Book assistant</PageTitle>
+        <PageTitle kicker="( Assistant ) OpenAI + PostgreSQL">Ask for a book</PageTitle>
         <NeoButton variant="primary" onClick={loginWithGoogle}>Sign in to chat</NeoButton>
       </Page>
     );
@@ -91,34 +91,33 @@ const ChatPage = () => {
 
   return (
     <Page>
-      <PageTitle mark=">" color="text-accent-teal">Book assistant</PageTitle>
+      <PageTitle kicker="( Assistant ) every suggestion comes from the catalogue">Ask for a book</PageTitle>
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
         <aside className="space-y-3">
-          <NeoButton fullWidth variant="navy" onClick={newChat}><MessageSquarePlus className="w-4 h-4 mr-2" /> New chat</NeoButton>
+          <NeoButton fullWidth onClick={newChat}><MessageSquarePlus className="w-4 h-4 mr-2" /> New chat</NeoButton>
           <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
             {sessions.map((s) => (
-              <li key={s.session_id} className={cn('flex items-center border-[3px] border-border', s.session_id === sessionId ? 'bg-accent-teal text-white' : 'bg-surface-white')}>
+              <li key={s.session_id} className={cn('flex items-center rounded-[6px] transition-colors', s.session_id === sessionId ? 'bg-text-main text-bg-base' : 'hover:bg-surface-white')}>
                 <button onClick={() => open(s.session_id)} className="flex-1 text-left px-3 py-2 min-w-0">
-                  <span className="block font-bold truncate">{s.title}</span>
-                  <span className="block text-xs opacity-80">{timeAgo(s.updated_at)}</span>
+                  <span className="block text-[13px] truncate">{s.title}</span>
+                  <span className="block text-[11px] opacity-60">{timeAgo(s.updated_at)}</span>
                 </button>
                 <button aria-label="Delete conversation" onClick={() => remove(s.session_id)} className="px-2 hover:text-accent-red"><Trash2 className="w-4 h-4" /></button>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-text-muted font-medium">Conversations are saved so you can continue them later.</p>
+          <p className="label">Conversations are saved in MongoDB so you can continue them later.</p>
         </aside>
 
-        <section className="bg-surface-white border-[3px] border-border shadow-brutal flex flex-col h-[78vh] min-w-0">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <section className="bg-surface-white rounded-[10px] flex flex-col h-[78vh] min-w-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-8" data-lenis-prevent>
             {messages.length === 0 && (
               <div className="text-center py-10">
-                <Bot className="w-14 h-14 mx-auto mb-3 text-accent-teal" />
-                <p className="font-bold text-lg mb-1">Ask for books in plain words.</p>
-                <p className="text-text-muted font-medium mb-5">Every suggestion comes from the BookLog catalogue.</p>
+                <p className="font-serif text-[clamp(2rem,4vw,3.4rem)] leading-[1] mb-3">What do you <span className="italic text-accent-red">feel</span> like reading?</p>
+                <p className="text-text-muted mb-8">Every suggestion comes from the BookLog catalogue, so nothing is made up.</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {EXAMPLES.map((ex) => (
-                    <button key={ex} onClick={() => send(ex)} className="px-3 py-1.5 border-2 border-border bg-bg-base font-bold text-sm hover:bg-accent-blue/30">
+                    <button key={ex} onClick={() => send(ex)} className="h-10 px-4 rounded-full border border-border text-[13px] hover:bg-text-main hover:text-bg-base transition-colors">
                       {ex}
                     </button>
                   ))}
@@ -127,11 +126,12 @@ const ChatPage = () => {
             )}
             {messages.map((m, i) => (
               <div key={i} className={cn('flex flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
-                <div className={cn('max-w-[90%] border-[3px] border-border p-3', m.role === 'user' ? 'bg-accent-navy text-white' : 'bg-bg-base')}>
-                  <p className="whitespace-pre-wrap font-medium break-words">{m.role === 'assistant' ? renderReply(m.content) : m.content}</p>
+                <span className="label mb-1.5">{m.role === 'user' ? 'You' : 'Assistant'}</span>
+                <div className={cn('max-w-[90%]', m.role === 'user' ? 'bg-text-main text-bg-base rounded-[16px] rounded-br-[4px] px-4 py-2.5 text-[14px]' : 'font-serif text-[1.25rem] leading-[1.4]')}>
+                  <p className="whitespace-pre-wrap break-words">{m.role === 'assistant' ? renderReply(m.content) : m.content}</p>
                 </div>
                 {m.books?.length > 0 && (
-                  <div className="mt-4 w-full grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="mt-6 w-full grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10">
                     {m.books.map((b, j) => (
                       <BookCard key={b.book_id} book={b} source="chatbot" colorScheme={['white', 'teal', 'blue', 'red'][j % 4]} />
                     ))}
@@ -139,10 +139,10 @@ const ChatPage = () => {
                 )}
               </div>
             ))}
-            {sending && <div className="flex items-center gap-2 font-bold text-text-muted"><Loader2 className="w-4 h-4 animate-spin" /> Searching the catalogue…</div>}
+            {sending && <div className="flex items-center gap-2 label"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching the catalogue…</div>}
             <div ref={bottom} />
           </div>
-          <div className="border-t-[3px] border-border p-3">
+          <div className="border-t border-border p-3 md:p-4">
             <ErrorBox>{error}</ErrorBox>
             <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex gap-2">
               <input
@@ -150,9 +150,9 @@ const ChatPage = () => {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="e.g. a short sci-fi book about AI"
                 maxLength={2000}
-                className="flex-1 min-w-0 px-4 py-3 border-[3px] border-border font-medium focus:outline-none"
+                className="flex-1 min-w-0 px-5 h-12 rounded-full bg-bg-base text-[14px] focus:outline-none placeholder:text-text-muted"
               />
-              <NeoButton type="submit" variant="primary" disabled={sending || !input.trim()} aria-label="Send"><Send className="w-5 h-5" /></NeoButton>
+              <NeoButton type="submit" disabled={sending || !input.trim()} aria-label="Send" className="h-12 w-12 px-0"><Send className="w-4 h-4" /></NeoButton>
             </form>
           </div>
         </section>

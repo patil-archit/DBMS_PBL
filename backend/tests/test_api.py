@@ -208,6 +208,81 @@ with TestClient(app) as c:
     for a in authors_cleanup:
         c.delete(f"/admin/authors/{a['author_id']}", headers=as_(A))
 
+    # ---- discover: browse, random, book of the day, stats ------------------
+    br = c.get("/discover/browse", params={"genre": "Fantasy", "sort": "rating", "limit": 10}).json()
+    check(br["total"] > 0 and all("Fantasy" in b["categories"] for b in br["books"]), "browse by genre")
+    p2 = c.get("/discover/browse", params={"genre": "Fantasy", "sort": "rating", "limit": 10, "offset": 10}).json()
+    check(not {b["book_id"] for b in br["books"]} & {b["book_id"] for b in p2["books"]}, "browse pages don't overlap")
+    rnd = c.get("/discover/random", params={"genre": "Fantasy"}).json()
+    check("Fantasy" in rnd["categories"] and rnd["average_rating"] >= 3.5, "surprise me picks a well-rated book in the genre")
+    check(c.get("/discover/today").json()["book_id"] == c.get("/discover/today").json()["book_id"], "book of the day is stable")
+    st = c.get("/discover/stats").json()
+    check(st["books"] > 0 and st["decades"], "catalogue stats and timeline")
+    fa = c.get("/discover/authors", params={"limit": 5}).json()
+    check(fa and all(a["photo_url"] for a in fa), "featured authors with portraits")
+    gi = c.get("/discover/genres").json()
+    check(all("/b/id/" in u for g in gi for u in (g["covers"] or [])), "genre tiles use real cover ids")
+    rs = c.get("/users/alice_reads/stats", headers=as_(B)).json()
+    check(rs["totals"]["books"] >= 1 and rs["genres"], "reading stats for a public diary")
+    with db.cursor(system=True) as cur:
+        cur.execute("UPDATE users SET is_private = TRUE WHERE username = %s", (cara,))
+    c.post("/diary", json={"book_id": bid, "rating": 4, "date_read": "2026-03-01"}, headers=as_(C))
+    check(c.get(f"/users/{cara}/stats", headers=as_(B)).json()["totals"]["entries"] == 0, "reading stats respect private diaries (RLS)")
+    own = c.get(f"/users/{cara}/stats", params={"year": 2026}, headers=as_(C)).json()
+    check(own["totals"]["entries"] == 1 and own["months"][0]["month"] == 3, "owner sees own reading stats by month")
+    c.post("/diary", json={"book_id": bid, "rating": 3, "review_text": "Secret thoughts from a private diary."}, headers=as_(C))
+    c.post("/diary", json={"book_id": bid, "rating": 5, "review_text": "A public review everyone should see."}, headers=as_(B))
+    jr = c.get("/discover/journal", params={"limit": 24}).json()
+    check(any(j["username"] == bob for j in jr) and all(j["username"] != cara for j in jr),
+          "journal shows public reviews and hides private diaries (RLS)")
+
+    # ---- reels & follower-only takes (MongoDB + follow graph) -------------
+    fy = c.get("/reels", params={"limit": 5}).json()
+    check(len(fy) == 5 and all(r["book"]["thumbnail"] and r["takes"] == [] for r in fy), "reels feed for anonymous readers, no takes")
+    tk = c.post("/takes", json={"book_id": bid, "text": "Fun fact: written in a shed", "vibe": "fun_fact"}, headers=as_(C))
+    check(tk.status_code == 201 and tk.json()["mine"], "post a take")
+    tid = tk.json()["take_id"]
+    check(c.post("/takes", json={"book_id": bid, "text": "x", "vibe": "nope"}, headers=as_(C)).status_code == 422, "unknown vibe rejected")
+    check(c.post("/takes", json={"book_id": bid, "text": "hi"}).status_code == 401, "posting needs sign-in")
+    seen_b = c.get(f"/books/{bid}/takes", headers=as_(B)).json()   # Bob follows Cara
+    check([t["take_id"] for t in seen_b] == [tid], "followers see the take")
+    check(c.get(f"/books/{bid}/takes", headers=as_(A)).json() == [], "non-followers don't see the take")
+    check(c.get(f"/books/{bid}/takes").json() == [], "anonymous readers don't see the take")
+    fol = c.get("/reels", params={"mode": "following"}, headers=as_(B)).json()
+    check(fol and fol[0]["book"]["book_id"] == bid and fol[0]["takes"][0]["take_id"] == tid, "following reels show books with takes")
+    check(c.post(f"/takes/{tid}/like", headers=as_(B)).json() == {"liked": True, "likes": 1}, "followers can like a take")
+    check(c.post(f"/takes/{tid}/like", headers=as_(A)).status_code == 404, "non-followers can't like a hidden take")
+    check(c.delete(f"/takes/{tid}", headers=as_(B)).status_code == 403, "can't delete someone else's take")
+    c.post("/takes", json={"book_id": bid, "text": "Second take"}, headers=as_(C))
+    check(c.delete(f"/takes/{tid}", headers=as_(C)).status_code == 204, "delete own take")
+
+    # ---- messages, notifications, presence, reading now ------------------
+    r = c.post(f"/messages/{cara}", json={"text": "Have you read this one?", "book_id": bid}, headers=as_(B))
+    check(r.status_code == 201 and r.json()["book"]["book_id"] == bid, "send a message with a book attached")
+    check(c.post(f"/messages/{bob}", json={"text": "Not yet!"}, headers=as_(C)).status_code == 201, "reply (one-way follow is enough)")
+    check(c.post(f"/messages/{cara}", json={"text": "hi"}, headers=as_(A)).status_code == 403, "can't message strangers")
+    check(c.post(f"/messages/{cara}", json={}, headers=as_(B)).status_code == 422, "empty message rejected")
+    th = c.get("/messages", headers=as_(B)).json()
+    check(th[0]["username"] == cara and th[0]["unread"] == 1 and th[0]["last"]["text"] == "Not yet!", "inbox threads with unread count")
+    check(c.get("/me/pulse", headers=as_(B)).json()["messages"] == 1, "pulse returns unread messages")
+    conv = c.get(f"/messages/{cara}", headers=as_(B)).json()
+    check([m["mine"] for m in conv["messages"]] == [True, False] and conv["can_message"], "conversation in order")
+    c.post(f"/messages/{cara}/read", headers=as_(B))
+    check(c.get("/me/pulse", headers=as_(B)).json()["messages"] == 0, "mark conversation read")
+    check(c.get(f"/messages/{bob}", headers=as_(C)).json()["online"], "presence: active readers show as online")
+    check({x["username"] for x in c.get("/messages/contacts", headers=as_(B)).json()} >= {cara, alice}, "contacts are follows + followers")
+    nots = c.get("/notifications", headers=as_(A)).json()
+    check(any(n["kind"] == "follow" and n["actor"] == bob for n in nots), "notifications: new follower")
+    check(c.get("/me/pulse", headers=as_(A)).json()["notifications"] >= 1, "unread notification count")
+    c.post("/notifications/seen", headers=as_(A))
+    check(c.get("/me/pulse", headers=as_(A)).json()["notifications"] == 0 and not any(n["unread"] for n in c.get("/notifications", headers=as_(A)).json()),
+          "notifications marked seen")
+    c.put(f"/shelves/{rnd['book_id']}", json={"status": "currently_reading"}, headers=as_(A))
+    rn = c.get("/people/reading-now", headers=as_(B)).json()
+    check(any(x["username"] == alice and x["book_id"] == rnd["book_id"] for x in rn), "reading now: what people you follow are reading")
+    rd = c.get(f"/books/{rnd['book_id']}/readers-now", headers=as_(B)).json()
+    check(rd["count"] >= 1 and alice in rd["friends"], "readers now on a book, friends first")
+
     # ---- export & delete account ------------------------------------------
     exp = c.get("/me/export", headers=as_(A)).json()
     check(exp["diary"] and exp["lists"] and exp["following"] == [bob], "export my data")
@@ -226,5 +301,8 @@ with TestClient(app) as c:
     sync_worker.process_once()
     check(graph.run("MATCH (u:User) WHERE u.user_id >= 1000000 RETURN count(u) AS n")[0]["n"] == 0,
           "deleted users removed from Neo4j via outbox")
+    from app import mongo
+    check(mongo.get_db().book_takes.count_documents({"user_id": {"$gte": 1000000}}) == 0, "deleted users' takes removed from MongoDB")
+    check(mongo.get_db().messages.count_documents({"from": {"$gte": 1000000}}) == 0, "deleted users' messages removed from MongoDB")
 
 print(f"\nALL {PASS} CHECKS PASSED")

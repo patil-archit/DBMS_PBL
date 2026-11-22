@@ -31,7 +31,7 @@ const SettingsPage = () => {
   }, []);
 
   if (loading) return <Spinner />;
-  if (!me) return <Page><p className="font-bold">Sign in to change your settings.</p></Page>;
+  if (!me) return <Page><p className="font-medium">Sign in to change your settings.</p></Page>;
   if (!form) return <Spinner />;
 
   const save = async (e) => {
@@ -61,17 +61,17 @@ const SettingsPage = () => {
   const destroy = async () => {
     await deleteAccount();
     await logout();
-    navigate('/');
+    navigate('/home');
   };
 
   const toggleGenre = (name) => setFavs((f) => (f.includes(name) ? f.filter((x) => x !== name) : [...f, name]));
 
   return (
     <Page className="max-w-3xl">
-      <PageTitle mark="⚙" color="text-accent-blue">Settings</PageTitle>
+      <PageTitle kicker="( Settings ) account, privacy and your data">Settings</PageTitle>
       <form onSubmit={save} className="space-y-8">
         <Card>
-          <h2 className="font-black text-2xl mb-4">Profile</h2>
+          <h2 className="font-medium text-2xl mb-4">Profile</h2>
           <ErrorBox>{error}</ErrorBox>
           <Field label="Username" hint="3–30 characters: lowercase letters, digits and _">
             <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} maxLength={30} />
@@ -86,19 +86,19 @@ const SettingsPage = () => {
         </Card>
 
         <Card>
-          <h2 className="font-black text-2xl mb-2">Favourite genres</h2>
+          <h2 className="font-medium text-2xl mb-2">Favourite genres</h2>
           <p className="text-text-muted font-medium mb-4">Used for recommendations.</p>
           <GenreChips genres={genres} selected={favs} onToggle={toggleGenre} />
         </Card>
 
         <div className="flex items-center gap-4">
           <NeoButton type="submit" variant="primary">Save settings</NeoButton>
-          {msg && <span className="font-bold text-accent-teal">{msg}</span>}
+          {msg && <span className="font-medium text-accent-teal">{msg}</span>}
         </div>
       </form>
 
       <Card className="mt-10">
-        <h2 className="font-black text-2xl mb-2">Your data</h2>
+        <h2 className="font-medium text-2xl mb-2">Your data</h2>
         <p className="text-text-muted font-medium mb-4">Download everything BookLog stores about you, or delete your account.</p>
         <div className="flex flex-wrap gap-3">
           <NeoButton variant="white" onClick={download}><Download className="w-4 h-4 mr-2" /> Export my data (JSON)</NeoButton>

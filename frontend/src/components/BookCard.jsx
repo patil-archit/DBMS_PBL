@@ -1,103 +1,77 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { cn } from './NeoButton';
+import { CoverImage } from './ui';
 import { logClick } from '../services/api';
 
-const BookCard = ({ book, showScore = false, colorScheme = 'white', source }) => {
-  const schemes = {
-    white: "bg-surface-white",
-    red: "bg-accent-red text-white",
-    blue: "bg-accent-blue text-text-main",
-    teal: "bg-accent-teal text-text-main"
-  };
+/*
+  A cover that tilts toward the pointer in 3D with a moving light sheen,
+  then a quiet caption: title, author, rating and (for recommendations) why.
+  `colorScheme` is accepted for older callers and ignored.
+*/
+// eslint-disable-next-line no-unused-vars
+const BookCard = ({ book, showScore = false, colorScheme, source, index, className }) => {
+  const ref = useRef(null);
+  const mx = useMotionValue(0.5);
+  const my = useMotionValue(0.5);
+  const rx = useSpring(useTransform(my, [0, 1], [9, -9]), { stiffness: 180, damping: 18 });
+  const ry = useSpring(useTransform(mx, [0, 1], [-11, 11]), { stiffness: 180, damping: 18 });
+  const glareX = useTransform(mx, [0, 1], ['0%', '100%']);
+  const glare = useTransform(glareX, (x) => `radial-gradient(circle at ${x} 20%, rgba(255,255,255,0.35), transparent 55%)`);
 
-  const isDark = colorScheme === 'red' || colorScheme === 'navy';
+  const onMove = (e) => {
+    const r = ref.current.getBoundingClientRect();
+    mx.set((e.clientX - r.left) / r.width);
+    my.set((e.clientY - r.top) / r.height);
+  };
+  const reset = () => { mx.set(0.5); my.set(0.5); };
 
   return (
     <Link
       to={`/book/${encodeURIComponent(book.title)}`}
-      className="block group h-full"
+      className={cn('group block', className)}
+      data-cursor="Open"
       onClick={() => book.book_id && source && logClick(book.book_id, source)}
     >
-      <motion.div 
-        className={cn(
-          "h-full flex flex-col border-brutal transition-all duration-300 relative",
-          "shadow-brutal hover:shadow-brutal-hover hover:translate-x-[2px] hover:translate-y-[2px]",
-          schemes[colorScheme]
-        )}
-        whileHover="hover"
-      >
-        {/* Top Section: Cover & Metadata */}
-        <div className="relative border-b-2 border-border p-4 bg-surface-white flex-grow flex flex-col items-center">
-          
-          <div className="w-full aspect-[2/3] border-brutal overflow-hidden relative shadow-brutal bg-bg-base mb-4">
-            {book.thumbnail ? (
-              <img 
-                src={book.thumbnail} 
-                alt={book.title} 
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "https://via.placeholder.com/300x400?text=No+Cover";
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-text-muted p-4 text-center border-brutal">
-                <span className="font-pixel text-xs tracking-widest uppercase mb-2">Error 404</span>
-                <span className="font-bold text-sm">Cover Not Found</span>
-              </div>
-            )}
-            
-            {showScore && book.score !== undefined && (
-              <div className="absolute top-2 right-2 bg-accent-red text-white px-2 py-1 font-pixel text-xs border-2 border-border shadow-brutal-hover">
-                Match: {book.score.toFixed(0)}
-              </div>
-            )}
-          </div>
-          
-          <div className="w-full mt-auto">
-            <h3 className="font-bold text-lg leading-tight line-clamp-2 mb-1 text-text-main" title={book.title}>
-              {book.title}
-            </h3>
-            <p className="text-text-muted text-sm font-medium line-clamp-1 uppercase tracking-tight">
-              {book.authors?.length > 0 ? book.authors.join(', ') : 'Unknown Author'}
-            </p>
-            {book.reason && (
-              <p className="mt-2 text-xs font-bold bg-accent-blue/20 border-2 border-border px-2 py-1 line-clamp-2" title={book.reason}>
-                {book.reason}
-              </p>
-            )}
-          </div>
-        </div>
+      <div className="[perspective:900px]">
+        <motion.div
+          ref={ref}
+          onMouseMove={onMove}
+          onMouseLeave={reset}
+          style={{ rotateX: rx, rotateY: ry, transformStyle: 'preserve-3d' }}
+          className="relative aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover bg-surface-white transition-shadow duration-500 group-hover:shadow-[0_40px_60px_-25px_rgba(0,0,0,0.55)]"
+        >
+          <CoverImage book={book} className="transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]" />
+          {/* spine shading */}
+          <span className="pointer-events-none absolute inset-y-0 left-0 w-[7%] bg-gradient-to-r from-black/25 via-white/10 to-transparent" />
+          <motion.span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: glare }} />
+          {showScore && book.score !== undefined && (
+            <span className="absolute top-2 right-2 rounded-full bg-black/70 text-white text-[10px] px-2 py-0.5 backdrop-blur">
+              {Math.round(book.score * 100)}%
+            </span>
+          )}
+        </motion.div>
+      </div>
 
-        {/* Bottom Section: Footer Actions */}
-        <div className={cn(
-          "p-4 flex items-center justify-between",
-          schemes[colorScheme]
-        )}>
-          <div className={cn(
-            "flex items-center font-bold text-sm",
-            isDark ? "text-white" : "text-text-main"
-          )}>
-            <Star className="w-4 h-4 fill-current mr-1" />
-            <span>{book.average_rating ? book.average_rating.toFixed(1) : 'N/A'}</span>
-          </div>
-          
-          <motion.div 
-            variants={{
-              hover: { x: 5 }
-            }}
-            className={cn(
-              "flex items-center text-sm font-bold uppercase tracking-wider font-pixel",
-              isDark ? "text-white" : "text-text-main"
-            )}
-          >
-            Explore <ArrowRight className="w-4 h-4 ml-1" />
-          </motion.div>
+      <div className="pt-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-[13px] leading-[1.25] font-medium line-clamp-2" title={book.title}>
+            {index !== undefined && <span className="label mr-1.5">{String(index + 1).padStart(2, '0')}</span>}
+            {book.title}
+          </h3>
+          {book.average_rating ? (
+            <span className="label !text-text-main whitespace-nowrap tabular-nums">★ {Number(book.average_rating).toFixed(1)}</span>
+          ) : null}
         </div>
-      </motion.div>
+        <p className="label mt-1 line-clamp-1">{book.authors?.length ? book.authors.join(', ') : 'Unknown author'}</p>
+        {book.reason && (
+          <div className="mt-3 rounded-[8px] bg-accent-red/[0.08] px-3 py-2.5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-accent-red">Why this pick</p>
+            <p className="text-[12.5px] leading-[1.45] mt-1 text-text-main/90">{book.reason}</p>
+          </div>
+        )}
+      </div>
     </Link>
   );
 };

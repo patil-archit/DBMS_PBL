@@ -49,8 +49,8 @@ const AddToListModal = ({ open, onClose, book }) => {
   return (
     <Modal open={open} onClose={onClose} title={`Add “${book?.title}” to a list`}>
       <ErrorBox>{error}</ErrorBox>
-      <form onSubmit={create} className="mb-6 border-[3px] border-border bg-surface-white p-4">
-        <p className="font-bold mb-2">New list</p>
+      <form onSubmit={create} className="mb-6 border border-border bg-surface-white p-4">
+        <p className="font-medium mb-2">New list</p>
         <div className="flex gap-2 mb-3">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Best of 2026" maxLength={200} />
           <NeoButton type="submit" variant="navy" size="sm" disabled={busy === 'new' || !name.trim()}>
@@ -70,7 +70,7 @@ const AddToListModal = ({ open, onClose, book }) => {
               <button
                 onClick={() => toggle(l)}
                 disabled={busy === l.list_id}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 border-[3px] border-border bg-surface-white hover:bg-bg-base font-bold text-left"
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 border border-border bg-surface-white hover:bg-bg-base font-medium text-left"
               >
                 <span className="flex items-center gap-2 min-w-0">
                   {!l.is_public && <Lock className="w-4 h-4 flex-shrink-0" />}
