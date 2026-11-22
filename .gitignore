@@ -7,3 +7,5 @@ backend/db/.openlibrary_cache/
 backend/.env
 backups/
 .claude/
+database/booklog.dump
+database/booklog.sql
