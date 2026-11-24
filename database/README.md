@@ -1,6 +1,6 @@
 # BookLog database snapshot
 
-Everything is in **`booklog-database.zip`** (about 13 MB). Unzip it first:
+Everything is in **`booklog-database.zip`** (about 14 MB). Unzip it first:
 
 ```bash
 unzip database/booklog-database.zip -d database/
@@ -14,6 +14,8 @@ unzip database/booklog-database.zip -d database/
 Both contain the full schema (tables, constraints, triggers, row-level security
 policies, views, materialized views) and all data: 23,862 books, 15,241 authors,
 7,517 publishers, 76 genres, plus the demo users' diaries and follows.
+5,206 authors have a bio and 4,971 a photo (from Open Library, with a Wikipedia
+fallback); 17,979 books have a real description, the other 5,883 a generated one-line summary.
 **User email addresses were removed** (from `users` and from the `audit_log`
 history) because this repository is public.
 
