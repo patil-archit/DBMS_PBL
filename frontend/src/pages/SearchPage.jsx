@@ -16,11 +16,11 @@ const AuthorRow = ({ author, onToggle, busy, signedIn }) => (
       {author.image_url ? (
         <img src={author.image_url} alt="" className="w-12 h-12 rounded-full object-cover grayscale group-hover:grayscale-0 transition duration-500" />
       ) : (
-        <span className="w-12 h-12 rounded-full bg-text-main text-bg-base flex items-center justify-center font-serif italic text-xl">{author.name[0]}</span>
+        <span className="w-12 h-12 rounded-full bg-text-main text-bg-base flex items-center justify-center font-serif text-xl">{author.name[0]}</span>
       )}
     </Link>
     <Link to={`/author/${encodeURIComponent(author.name)}`} className="col-span-10 sm:col-span-5 min-w-0">
-      <p className="font-wide font-medium text-[15px] truncate group-hover:text-accent-red transition-colors">{author.name}</p>
+      <p className="caps font-medium text-[15px] truncate group-hover:text-accent-red transition-colors">{author.name}</p>
       <p className="label mt-0.5">{author.book_count} books</p>
     </Link>
     <p className="hidden sm:block col-span-4 text-[12px] text-text-muted line-clamp-2">{author.description || 'No biography yet.'}</p>
@@ -178,7 +178,7 @@ const SearchPage = () => {
 
         {searched && !loading && total === 0 && !error && (
           <div className="py-20 text-center">
-            <p className="font-serif italic text-5xl">Nothing matched.</p>
+            <p className="font-serif text-5xl">Nothing matched.</p>
             <p className="text-text-muted mt-3">Check the spelling or use fewer words. Small typos are handled automatically.</p>
           </div>
         )}

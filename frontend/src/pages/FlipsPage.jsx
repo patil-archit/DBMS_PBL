@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpRight, Bookmark, ChevronDown, ChevronUp, Heart, Link2, Lock, MessageCircle, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, Heart, Link2, Globe, MessageCircle, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { cn } from '../components/NeoButton';
-import { Avatar, CoverImage, EASE, timeAgo } from '../components/ui';
+import { Avatar, Chip, CoverImage, EASE, timeAgo } from '../components/ui';
+import { Book3D, DogEar } from '../components/Dogs';
 import { useAuth } from '../contexts/AuthContext';
 import { coverPalette } from '../utils/colors';
-import { deleteTake, getGenreIndex, getReels, likeTake, postTake, setShelf } from '../services/api';
+import { deleteTake, getFlips, getGenreIndex, likeTake, postTake, setShelf } from '../services/api';
 
 const VIBES = {
   fun_fact: ['💡', 'Fun fact'],
@@ -20,6 +21,7 @@ const VIBES = {
 };
 
 const YEAR = new Date().getFullYear();
+const MODES = [['for_you', 'For you'], ['latest', 'Latest'], ['following', 'Following']];
 
 /** Little facts generated from the catalogue data, cycled on each reel. */
 const factsFor = (b) => {
@@ -72,9 +74,10 @@ const FloatingTakes = ({ takes, active }) => {
     const push = () => {
       const t = takes[n % takes.length];
       n += 1;
-      setShown((s) => [...s.slice(-2), { ...t, key: `${t.take_id}-${n}` }]);
+      setShown((s) => [...s.filter((o) => o.take_id !== t.take_id).slice(-2), { ...t, key: `${t.take_id}-${n}` }]);
     };
     push();
+    if (takes.length < 2) return undefined; // one take: show it once, no cycling
     const id = setInterval(push, 2600);
     return () => clearInterval(id);
   }, [active, takes]);
@@ -103,17 +106,17 @@ const FloatingTakes = ({ takes, active }) => {
 
 const ActionButton = ({ icon: Icon, label, onClick, active, fill }) => (
   <button onClick={onClick} className="flex flex-col items-center gap-1 text-white group" aria-label={label}>
-    <motion.span whileTap={{ scale: 0.8 }} className={cn('w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-colors', active ? 'bg-accent-red' : 'bg-black/35 group-hover:bg-black/55')}>
+    <motion.span whileTap={{ scale: 0.8 }} className={cn('w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 group-hover:-rotate-12 group-hover:scale-110', active ? 'bg-red text-[#FBFBF4]' : 'bg-[#FBFBF4] text-red')}>
       <Icon className={cn('w-[22px] h-[22px]', fill && active && 'fill-current')} />
     </motion.span>
-    <span className="text-[11px] font-medium drop-shadow">{label}</span>
+    <span className="font-main caps text-[10px] drop-shadow">{label}</span>
   </button>
 );
 
 /** One full-height reel. */
 const Reel = ({ reel, active, saved, onSave, onOpenTakes, onToast }) => {
   const { book, takes } = reel;
-  const [tint, setTint] = useState(['#333', '#2B1B14']);
+  const [tint, setTint] = useState(['#E33529', '#8E1F17']);
   const [burst, setBurst] = useState(0);
   useEffect(() => { coverPalette(book.thumbnail, 3).then((p) => p.length && setTint(p)); }, [book.thumbnail]);
 
@@ -126,20 +129,16 @@ const Reel = ({ reel, active, saved, onSave, onOpenTakes, onToast }) => {
   };
 
   return (
-    <section className="h-full w-full relative overflow-hidden rounded-[22px] bg-[#0d0d0d] text-white select-none">
-      {/* colour wash + blurred cover */}
-      <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint[0]}, ${tint[1] || '#2B1B14'} 70%)` }} />
-      <div className="absolute inset-0 opacity-50 scale-125 blur-3xl"><CoverImage book={book} /></div>
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/85" />
+    <section className="h-full w-full relative overflow-hidden rounded-[32px] text-[#FBFBF4] select-none">
+      {/* the cover's own colours as the background */}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(165deg, ${tint[0]}, ${tint[1] || '#8E1F17'} 75%)` }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/70" />
+      <span className="absolute -right-24 -top-24 w-72 h-72 rounded-full bg-white/10" />
 
-      {/* cover, slowly zooming while on screen; double-click to save */}
-      <div className="absolute inset-x-0 top-[6%] flex justify-center" onDoubleClick={like} data-cursor="Double-click">
-        <motion.div
-          className="w-[56%] aspect-[2/3] rounded-[6px] overflow-hidden shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]"
-          animate={active ? { scale: [1, 1.06], rotate: [0, -1.5] } : { scale: 1, rotate: 0 }}
-          transition={{ duration: 9, ease: 'linear' }}
-        >
-          <CoverImage book={book} eager />
+      {/* the book in 3D, floating while on screen; double-click to save */}
+      <div className="absolute inset-x-0 top-[7%] flex justify-center" onDoubleClick={like} data-cursor="Double-click">
+        <motion.div animate={active ? { y: [0, -10, 0] } : { y: 0 }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>
+          <Book3D book={book} width={200} idle={-22}><CoverImage book={book} eager /></Book3D>
         </motion.div>
         <AnimatePresence>
           {burst > 0 && (
@@ -158,23 +157,23 @@ const Reel = ({ reel, active, saved, onSave, onOpenTakes, onToast }) => {
         <ActionButton icon={MessageCircle} label={takes.length ? String(takes.length) : 'Take'} onClick={() => onOpenTakes(reel)} />
         <ActionButton icon={Link2} label="Share" onClick={share} />
         <Link to={`/book/${encodeURIComponent(book.title)}`} className="flex flex-col items-center gap-1 text-white group" aria-label="Open book">
-          <span className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center group-hover:bg-accent-red group-hover:text-white transition-colors"><ArrowUpRight className="w-[22px] h-[22px]" /></span>
-          <span className="text-[11px] font-medium">Open</span>
+          <span className="w-12 h-12 rounded-full bg-red text-[#FBFBF4] flex items-center justify-center transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110"><ArrowUpRight className="w-[22px] h-[22px]" /></span>
+          <span className="font-main caps text-[10px]">Open</span>
         </Link>
       </div>
 
       {/* caption */}
-      <div className="absolute left-0 right-16 bottom-0 p-5">
+      <div className="absolute left-0 right-16 bottom-0 p-6">
         <div className="flex flex-wrap gap-1.5 mb-2">
-          {(book.categories || []).slice(0, 3).map((g) => <span key={g} className="text-[10.5px] px-2 py-0.5 rounded-full bg-white/15 backdrop-blur">{g}</span>)}
+          {(book.categories || []).slice(0, 3).map((g) => <span key={g} className="caps text-[10px] px-2.5 py-1 rounded-full bg-[#FBFBF4]/20">{g}</span>)}
         </div>
-        <p className="font-serif text-[2rem] leading-[0.95] line-clamp-2">{book.title}</p>
+        <p className="font-display text-[2.6rem] leading-[0.9] line-clamp-2">{book.title}</p>
         <p className="text-[13px] mt-1.5 opacity-85 line-clamp-1">{book.authors?.join(', ')} · ★ {Number(book.average_rating || 0).toFixed(2)}</p>
         <div className="mt-3 opacity-90"><FactTicker book={book} active={active} /></div>
       </div>
 
       {/* progress line while on screen */}
-      {active && <motion.div className="absolute top-0 left-0 h-[3px] bg-white/80" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 9, ease: 'linear' }} />}
+      {active && <motion.div className="absolute top-0 left-0 h-[4px] bg-[#FBFBF4]" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 9, ease: 'linear' }} />}
     </section>
   );
 };
@@ -216,8 +215,8 @@ const TakesPanel = ({ reel, onClose, onChanged }) => {
     <div className="flex flex-col h-full">
       <div className="flex items-start justify-between gap-3 pb-4 border-b border-border">
         <div className="min-w-0">
-          <p className="label">Takes on</p>
-          <p className="font-serif text-[1.6rem] leading-tight line-clamp-2">{book.title}</p>
+          <p className="caps">Takes on</p>
+          <p className="font-display text-[2.2rem] mt-1 line-clamp-2">{book.title}</p>
         </div>
         {onClose && <button onClick={onClose} className="w-9 h-9 rounded-full border border-border flex items-center justify-center shrink-0" aria-label="Close"><X className="w-4 h-4" /></button>}
       </div>
@@ -225,10 +224,10 @@ const TakesPanel = ({ reel, onClose, onChanged }) => {
       <div className="flex-1 overflow-y-auto py-4 space-y-4 min-h-[120px]" data-lenis-prevent>
         {!currentUser && (
           <p className="text-[13px] text-text-muted">
-            Takes are for followers only. <button onClick={loginWithGoogle} className="text-text-main link-under">Sign in</button> to see what people you follow said and post your own.
+            <button onClick={loginWithGoogle} className="font-main normal-case text-text-main link-under">Sign in</button> to post your own take and like other people’s.
           </p>
         )}
-        {currentUser && takes.length === 0 && <p className="font-serif italic text-2xl text-text-muted">No takes yet from you or anyone you follow. Start one.</p>}
+        {takes.length === 0 && <p className="font-display text-3xl text-text-muted">No takes yet. {currentUser ? 'Start one.' : ''}</p>}
         <AnimatePresence initial={false}>
           {takes.map((t) => (
             <motion.div key={t.take_id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, height: 0 }} className="flex gap-3">
@@ -276,7 +275,7 @@ const TakesPanel = ({ reel, onClose, onChanged }) => {
             </motion.button>
           </div>
           <p className="flex items-center justify-between text-[11px] text-text-muted mt-2">
-            <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> Only people who follow you can see this</span>
+            <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> Everyone can see this, unless your account is private</span>
             <span className="tabular-nums">{text.length}/280</span>
           </p>
           {error && <p className="text-[12px] text-accent-red mt-1">{error}</p>}
@@ -286,7 +285,7 @@ const TakesPanel = ({ reel, onClose, onChanged }) => {
   );
 };
 
-const ReelsPage = () => {
+const FlipsPage = () => {
   const { currentUser, loginWithGoogle, loading: authLoading } = useAuth();
   const [mode, setMode] = useState('for_you');
   const [genre, setGenre] = useState(null);
@@ -305,7 +304,7 @@ const ReelsPage = () => {
     busy.current = true;
     setLoading(true);
     try {
-      const r = await getReels(mode, genre);
+      const r = await getFlips(mode, genre);
       setReels((prev) => {
         if (reset) return r;
         const have = new Set(prev.map((x) => x.book.book_id));
@@ -333,7 +332,7 @@ const ReelsPage = () => {
     if (i !== active) setActive(Math.max(0, Math.min(reels.length - 1, i)));
   };
 
-  // Endless: fetch more near the end (the following feed is finite)
+  // Endless: fetch more near the end (the latest and following feeds are finite)
   useEffect(() => {
     if (mode === 'for_you' && reels.length && active >= reels.length - 3) load(false);
   }, [active, reels.length, mode, load]);
@@ -372,22 +371,20 @@ const ReelsPage = () => {
   const sheetReel = sheet && reels.find((r) => r.book.book_id === sheet);
 
   return (
-    <div className="px-3 sm:px-8 lg:px-10 pb-10">
-      <div className="grid lg:grid-cols-[1fr_minmax(0,440px)_1fr] gap-8 xl:gap-16 items-start">
+    <div className="max-w-[1400px] mx-auto px-3 sm:px-8 lg:px-10 pt-4 pb-16">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)_minmax(0,1fr)] gap-8 xl:gap-14 items-start">
         {/* Left: feed controls */}
-        <aside className="hidden lg:block pt-2">
-          <p className="label">( Reels )</p>
-          <h1 className="font-wide font-semibold uppercase text-[clamp(2.4rem,4vw,4rem)] leading-[0.9] tracking-[-0.03em] mt-2">
-            Book<br /><span className="font-serif italic normal-case font-normal text-accent-red">reels</span>
-          </h1>
-          <p className="text-[14px] text-text-muted mt-4 max-w-[19rem]">
-            One book per screen. Scroll for the next one, double-click a cover to save it, and leave takes that only your followers can see.
+        <aside className="hidden lg:flex flex-col h-[calc(100vh-130px)] min-h-[520px]">
+          <p className="caps">( Flips )</p>
+          <h1 className="font-display text-[clamp(3.6rem,6vw,6.4rem)] mt-3">Flip<br />through</h1>
+          <p className="text-[14px] text-text-muted mt-4 max-w-[20rem] leading-relaxed">
+            One book per screen. Scroll to flip to the next, double-click a cover to save it, and see what everyone is saying about it.
           </p>
 
-          <div className="relative flex p-1 rounded-full border border-border mt-8 w-max">
-            {[['for_you', 'For you'], ['following', 'Following']].map(([k, l]) => (
-              <button key={k} onClick={() => pickMode(k)} className={cn('relative h-9 px-4 rounded-full text-[13px]', mode === k && 'text-bg-base')}>
-                {mode === k && <motion.span layoutId="reel-mode" className="absolute inset-0 rounded-full bg-text-main" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
+          <div className="relative flex p-1 rounded-full bg-surface-white mt-6 w-max">
+            {MODES.map(([k, l]) => (
+              <button key={k} onClick={() => pickMode(k)} className={cn('relative h-10 px-5 rounded-full text-[19px]', mode === k && 'text-[#FBFBF4]')}>
+                {mode === k && <motion.span layoutId="reel-mode" className="absolute inset-0 rounded-full bg-red" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
                 <span className="relative">{l}</span>
               </button>
             ))}
@@ -395,36 +392,36 @@ const ReelsPage = () => {
 
           {mode === 'for_you' && (
             <div className="mt-6">
-              <p className="label mb-2">Genre</p>
-              <div className="flex flex-wrap gap-1.5 max-w-[22rem]">
-                {[null, ...genres.slice(0, 18).map((g) => g.name)].map((g) => (
-                  <button key={g ?? 'all'} onClick={() => setGenre(g)} className={cn('h-8 px-3 rounded-full border text-[12px] transition-colors', genre === g ? 'bg-text-main text-bg-base border-text-main' : 'border-border hover:border-text-main')}>
-                    {g ?? 'Everything'}
-                  </button>
+              <p className="caps mb-3">Genre</p>
+              <div className="flex flex-wrap gap-2 max-w-[24rem]">
+                {[null, ...genres.slice(0, 9).map((g) => g.name)].map((g) => (
+                  <Chip key={g ?? 'all'} active={genre === g} onClick={() => setGenre(g)}>{g ?? 'Everything'}</Chip>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="mt-8 flex items-center gap-2 text-[12px] text-text-muted">
-            <kbd className="w-7 h-7 rounded-md border border-border flex items-center justify-center"><ChevronUp className="w-3.5 h-3.5" /></kbd>
-            <kbd className="w-7 h-7 rounded-md border border-border flex items-center justify-center"><ChevronDown className="w-3.5 h-3.5" /></kbd>
-            to move between reels
+          <div className="mt-auto flex items-end justify-between gap-4 pt-6">
+            <div className="flex gap-2">
+              <button onClick={() => go(-1)} className="w-14 h-14 rounded-full bg-[#FBFBF4] text-red flex items-center justify-center hover:-rotate-12 hover:scale-110 transition-transform duration-300" aria-label="Previous reel"><ChevronUp className="w-6 h-6" /></button>
+              <button onClick={() => go(1)} className="w-14 h-14 rounded-full bg-red text-[#FBFBF4] flex items-center justify-center hover:rotate-12 hover:scale-110 transition-transform duration-300" aria-label="Next reel"><ChevronDown className="w-6 h-6" /></button>
+            </div>
+            <DogEar animal="fox" prop="cap" seed={9} body={false} ribbon={false} className="w-24 xl:w-28" />
           </div>
         </aside>
 
         {/* Centre: the reel column */}
         <div className="relative">
           <div className="lg:hidden flex justify-center gap-6 mb-3 text-[14px]">
-            {[['for_you', 'For you'], ['following', 'Following']].map(([k, l]) => (
-              <button key={k} onClick={() => pickMode(k)} className={cn('pb-1 border-b-2', mode === k ? 'border-text-main font-medium' : 'border-transparent text-text-muted')}>{l}</button>
+            {MODES.map(([k, l]) => (
+              <button key={k} onClick={() => pickMode(k)} className={cn('pb-1 border-b-2 text-[20px]', mode === k ? 'border-text-main' : 'border-transparent text-text-muted')}>{l}</button>
             ))}
           </div>
           <div
             ref={scroller}
             onScroll={onScroll}
             data-lenis-prevent
-            className="h-[calc(100dvh-140px)] lg:h-[calc(100vh-120px)] min-h-[520px] overflow-y-auto snap-y snap-mandatory rounded-[22px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="h-[calc(100dvh-150px)] lg:h-[calc(100vh-130px)] min-h-[520px] overflow-y-auto snap-y snap-mandatory rounded-[32px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {reels.map((r, i) => (
               <div key={r.book.book_id} data-index={i} className="h-full snap-start snap-always">
@@ -432,19 +429,15 @@ const ReelsPage = () => {
               </div>
             ))}
             {!reels.length && !loading && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 rounded-[22px] border border-dashed border-border">
-                <Bookmark className="w-8 h-8 mb-4" />
-                <p className="font-serif text-3xl">Nothing here yet</p>
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 rounded-[32px] bg-surface-white">
+                <DogEar animal="owl" seed={4} body={false} ribbon={false} className="w-32 mb-6" />
+                <p className="font-display text-5xl">Nothing here yet</p>
                 <p className="text-[13px] text-text-muted mt-2 max-w-xs">
-                  {mode === 'following' ? 'When people you follow post takes, their books show up here.' : 'No books matched.'}
+                  {mode === 'following' ? 'When people you follow post takes, their books show up here.' : mode === 'latest' ? 'No takes yet. Be the first to post one.' : 'No books matched.'}
                 </p>
               </div>
             )}
-            {loading && !reels.length && <div className="h-full flex items-center justify-center label">Loading reels…</div>}
-          </div>
-          <div className="hidden lg:flex flex-col gap-2 absolute -right-14 top-1/2 -translate-y-1/2">
-            <button onClick={() => go(-1)} className="w-10 h-10 rounded-full border border-border hover:bg-text-main hover:text-bg-base flex items-center justify-center transition-colors" aria-label="Previous reel"><ChevronUp className="w-4 h-4" /></button>
-            <button onClick={() => go(1)} className="w-10 h-10 rounded-full border border-border hover:bg-text-main hover:text-bg-base flex items-center justify-center transition-colors" aria-label="Next reel"><ChevronDown className="w-4 h-4" /></button>
+            {loading && !reels.length && <div className="h-full flex items-center justify-center caps">Flipping…</div>}
           </div>
           <AnimatePresence>
             {toast && (
@@ -456,8 +449,8 @@ const ReelsPage = () => {
         </div>
 
         {/* Right: takes on the reel on screen */}
-        <aside className="hidden lg:block h-[calc(100vh-120px)] min-h-[520px] rounded-[22px] border border-border bg-surface-white p-5">
-          {current ? <TakesPanel key={current.book.book_id} reel={current} onChanged={setTakes} /> : <p className="label">Takes appear here.</p>}
+        <aside className="hidden lg:block h-[calc(100vh-130px)] min-h-[520px] rounded-[32px] bg-surface-white p-7">
+          {current ? <TakesPanel key={current.book.book_id} reel={current} onChanged={setTakes} /> : <p className="caps">Takes appear here.</p>}
         </aside>
       </div>
 
@@ -466,7 +459,7 @@ const ReelsPage = () => {
         {sheetReel && (
           <motion.div className="lg:hidden fixed inset-0 z-[130] bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSheet(null)}>
             <motion.div
-              className="absolute inset-x-0 bottom-0 h-[75vh] rounded-t-[22px] bg-bg-base p-5"
+              className="absolute inset-x-0 bottom-0 h-[75vh] rounded-t-[32px] bg-bg-base p-6"
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ duration: 0.5, ease: EASE }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -479,4 +472,4 @@ const ReelsPage = () => {
   );
 };
 
-export default ReelsPage;
+export default FlipsPage;

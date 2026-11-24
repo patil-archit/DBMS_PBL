@@ -5,6 +5,7 @@ import BookCard from '../components/BookCard';
 import { ErrorBox, Page, PageTitle, Spinner, timeAgo } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteChatSession, errorMessage, getChatSession, getChatSessions, sendChatMessage } from '../services/api';
+import SignInGate from '../components/SignInGate';
 
 const EXAMPLES = [
   'A dark fantasy under 400 pages',
@@ -20,7 +21,7 @@ const renderReply = (text) =>
   );
 
 const ChatPage = () => {
-  const { me, loginWithGoogle, loading: authLoading } = useAuth();
+  const { me, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -81,17 +82,12 @@ const ChatPage = () => {
 
   if (authLoading) return <Spinner />;
   if (!me) {
-    return (
-      <Page className="text-center">
-        <PageTitle kicker="( Assistant ) OpenAI + PostgreSQL">Ask for a book</PageTitle>
-        <NeoButton variant="primary" onClick={loginWithGoogle}>Sign in to chat</NeoButton>
-      </Page>
-    );
+    return <SignInGate animal="fox" title="Ask for a book" text="Describe a mood, a plot or a book you loved. The assistant answers from the catalogue." button="Sign in to chat" prop="quill" seed={14} />;
   }
 
   return (
     <Page>
-      <PageTitle kicker="( Assistant ) every suggestion comes from the catalogue">Ask for a book</PageTitle>
+      <PageTitle animal="fox" prop="quill" kicker="( Assistant ) every suggestion comes from the catalogue">Ask for a book</PageTitle>
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
         <aside className="space-y-3">
           <NeoButton fullWidth onClick={newChat}><MessageSquarePlus className="w-4 h-4 mr-2" /> New chat</NeoButton>
@@ -113,7 +109,7 @@ const ChatPage = () => {
           <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-8" data-lenis-prevent>
             {messages.length === 0 && (
               <div className="text-center py-10">
-                <p className="font-serif text-[clamp(2rem,4vw,3.4rem)] leading-[1] mb-3">What do you <span className="italic text-accent-red">feel</span> like reading?</p>
+                <p className="font-serif text-[clamp(2rem,4vw,3.4rem)] leading-[1] mb-3">What do you <span className="text-accent-red">feel</span> like reading?</p>
                 <p className="text-text-muted mb-8">Every suggestion comes from the BookLog catalogue, so nothing is made up.</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {EXAMPLES.map((ex) => (

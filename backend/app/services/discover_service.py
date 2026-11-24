@@ -246,12 +246,12 @@ def featured_authors(limit=14):
     with db.cursor() as cur:
         cur.execute(
             """
-            SELECT a.name, a.photo_url, count(*) AS books, sum(bs.ratings_count) AS ratings,
+            SELECT a.name, a.photo_url, a.bio, count(*) AS books, sum(bs.ratings_count) AS ratings,
                    round(avg(bs.avg_rating)::numeric, 2) AS avg_rating
             FROM author a
             JOIN book_author ba ON ba.author_id = a.author_id
             JOIN book_summary bs ON bs.book_id = ba.book_id
-            WHERE a.photo_url IS NOT NULL
+            WHERE a.photo_url IS NOT NULL AND length(a.bio) > 60
             GROUP BY a.author_id
             HAVING count(*) BETWEEN 2 AND 120
             ORDER BY sum(bs.ratings_count) DESC NULLS LAST

@@ -57,7 +57,7 @@ const Spine = ({ book, index }) => {
       >
         <span className={`absolute inset-0 flex flex-col items-center justify-between py-3 transition-opacity duration-300 ${open ? 'opacity-0' : 'opacity-100'}`}>
           <span className="w-[60%] h-px bg-current opacity-40" />
-          <span className="[writing-mode:vertical-rl] rotate-180 font-wide font-semibold uppercase text-[11px] tracking-[0.02em] leading-none line-clamp-1 max-h-[75%] overflow-hidden whitespace-nowrap">
+          <span className="[writing-mode:vertical-rl] rotate-180 caps font-semibold uppercase text-[11px] tracking-[0.02em] leading-none line-clamp-1 max-h-[75%] overflow-hidden whitespace-nowrap">
             {book.title}
           </span>
           <span className="[writing-mode:vertical-rl] rotate-180 text-[9px] opacity-70 whitespace-nowrap max-h-[22%] overflow-hidden">{book.authors?.[0]?.split(' ').pop()}</span>

@@ -5,7 +5,7 @@ import { LayoutGrid, Library, Shuffle, X } from 'lucide-react';
 import BookCard from '../components/BookCard';
 import Bookshelf from '../components/Bookshelf';
 import NeoButton, { cn } from '../components/NeoButton';
-import { CoverImage, EASE, ErrorBox, Page, PageTitle, Spinner } from '../components/ui';
+import { Chip, CoverImage, EASE, ErrorBox, Page, PageTitle, Spinner } from '../components/ui';
 import { browseBooks, errorMessage, getGenreIndex, getRandomBook } from '../services/api';
 
 const SORTS = [
@@ -21,18 +21,6 @@ const LENGTHS = [[null, 'Any length'], [200, 'Under 200 pages'], [300, 'Under 30
 const RATINGS = [[null, 'Any rating'], [3.5, '3.5+'], [4, '4+'], [4.5, '4.5+']];
 const DECADES = [null, 2020, 2010, 2000, 1990, 1980, 1970, 1960, 1950, 1900, 1850, 1800];
 const PAGE = 30;
-
-const Chip = ({ active, children, onClick }) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      'h-8 px-3.5 rounded-full border text-[12px] whitespace-nowrap transition-colors',
-      active ? 'bg-text-main text-bg-base border-text-main' : 'border-border hover:border-text-main'
-    )}
-  >
-    {children}
-  </button>
-);
 
 /** "Spin the shelf": covers flick past like a slot machine, then land on a random book. */
 const Roulette = ({ genre }) => {
@@ -56,12 +44,12 @@ const Roulette = ({ genre }) => {
   };
 
   return (
-    <div className="border border-border rounded-[10px] p-5 bg-surface-white">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-[28px] p-6 bg-surface-white">
+      <div className="flex flex-col items-start gap-4">
         <div>
-          <p className="label">Can’t decide?</p>
-          <p className="font-wide font-medium text-[14px] mt-1">Spin the shelf</p>
-          <p className="text-[12px] text-text-muted mt-1">A random well-rated book{genre ? ` in ${genre}` : ''}.</p>
+          <p className="caps">Can’t decide?</p>
+          <p className="font-display text-[34px] mt-1">Spin the shelf</p>
+          <p className="text-[13px] text-text-muted mt-1">A random well-rated book{genre ? ` in ${genre}` : ''}.</p>
         </div>
         <NeoButton size="sm" onClick={spin} disabled={spinning}><Shuffle className="w-3.5 h-3.5 mr-1.5" /> Spin</NeoButton>
       </div>
@@ -79,7 +67,7 @@ const Roulette = ({ genre }) => {
               </div>
               {result && !spinning && (
                 <div className="min-w-0">
-                  <Link to={`/book/${encodeURIComponent(result.title)}`} className="font-medium text-[14px] link-draw line-clamp-2">{result.title}</Link>
+                  <Link to={`/book/${encodeURIComponent(result.title)}`} className="font-display text-[22px] link-draw line-clamp-2">{result.title}</Link>
                   <p className="label mt-1">{result.authors?.join(', ')}</p>
                   <p className="label mt-1">★ {Number(result.average_rating).toFixed(1)} · {result.pub_year || '—'}</p>
                 </div>
@@ -157,36 +145,36 @@ const ExplorePage = () => {
     <Page>
       <PageTitle
         kicker="( Explore ) the whole catalogue"
-        right={total !== null && <p className="label text-right">{total.toLocaleString()} books<br />match</p>}
+        animal="cat" prop="glasses" seed={4}
+        right={total !== null && <p className="text-right"><span className="font-display text-[48px] block">{total.toLocaleString()}</span><span className="caps">books match</span></p>}
       >
-        <span>{genre || 'Every'}</span>
-        <span className="font-serif italic normal-case text-accent-red">{genre ? 'books' : 'book'}</span>
+        <span>{genre ? `${genre} books` : 'Every book'}</span>
       </PageTitle>
 
-      <div className="grid lg:grid-cols-12 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Sidebar */}
-        <aside className="lg:col-span-3 space-y-8 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-2" data-lenis-prevent>
+        <aside className="min-w-0 lg:col-span-3 space-y-8 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-2" data-lenis-prevent>
           <Roulette genre={genre} />
           <div>
             <div className="flex items-baseline justify-between mb-3">
-              <p className="label">Genres</p>
+              <p className="caps">Genres</p>
               {genre && <button onClick={() => set('genre', null)} className="label link-under">Clear</button>}
             </div>
             <input
               value={genreFilter}
               onChange={(e) => setGenreFilter(e.target.value)}
               placeholder="Filter genres…"
-              className="w-full bg-transparent border-b border-border pb-2 mb-3 text-[13px] outline-none focus:border-text-main placeholder:text-text-muted"
+              className="w-full h-11 px-4 rounded-full bg-surface-white mb-4 text-[14px] outline-none placeholder:text-text-muted"
             />
             <ul className="space-y-0.5 max-h-[45vh] lg:max-h-none overflow-y-auto" data-lenis-prevent>
               {shownGenres.map((g) => (
                 <li key={g.name}>
                   <button
                     onClick={() => set('genre', genre === g.name ? null : g.name)}
-                    className={cn('w-full flex items-baseline justify-between py-1 text-left text-[13px] group', genre === g.name ? 'text-accent-red' : 'hover:pl-1.5 transition-[padding] duration-300')}
+                    className={cn('chip w-full flex items-baseline justify-between py-1.5 px-3 -mx-3 rounded-full text-left text-[22px] leading-none group transition-all duration-300', genre === g.name ? 'bg-red text-[#FBFBF4]' : 'hover:pl-5')}
                   >
-                    <span className={cn(genre === g.name && 'font-medium')}>{g.name}</span>
-                    <span className="label tabular-nums">{g.book_count}</span>
+                    <span>{g.name}</span>
+                    <span className="font-main text-[11px] tabular-nums opacity-70">{g.book_count}</span>
                   </button>
                 </li>
               ))}
@@ -195,7 +183,7 @@ const ExplorePage = () => {
         </aside>
 
         {/* Results */}
-        <div className="lg:col-span-9">
+        <div className="min-w-0 lg:col-span-9">
           <div className="space-y-3 mb-10">
             <div className="flex gap-2 overflow-x-auto pb-1" data-lenis-prevent>
               {SORTS.map(([k, l]) => <Chip key={k} active={sort === k} onClick={() => set('sort', k === 'popular' ? null : k)}>{l}</Chip>)}
@@ -208,7 +196,7 @@ const ExplorePage = () => {
               <span className="w-px bg-border mx-1" />
               {RATINGS.map(([v, l]) => <Chip key={l} active={minRating === v} onClick={() => set('rating', v)}>{l}</Chip>)}
               {activeFilters > 0 && (
-                <button onClick={() => setParams({}, { replace: true })} className="h-8 px-3 text-[12px] flex items-center gap-1 text-accent-red">
+                <button onClick={() => setParams({}, { replace: true })} className="h-10 px-3 text-[17px] flex items-center gap-1 text-red">
                   <X className="w-3.5 h-3.5" /> Reset all
                 </button>
               )}
@@ -216,11 +204,11 @@ const ExplorePage = () => {
           </div>
 
           <div className="flex items-center justify-between border-t border-border pt-3 mb-8">
-            <span className="label tabular-nums">Showing {books.length.toLocaleString()}{total !== null ? ` of ${total.toLocaleString()}` : ''}</span>
-            <div className="relative flex p-1 rounded-full border border-border">
+            <span className="caps tabular-nums">Showing {books.length.toLocaleString()}{total !== null ? ` of ${total.toLocaleString()}` : ''}</span>
+            <div className="relative flex p-1 rounded-full bg-surface-white">
               {[['grid', 'Grid', LayoutGrid], ['shelf', 'Shelf', Library]].map(([v, l, Icon]) => (
-                <button key={v} onClick={() => pickView(v)} className={cn('relative h-8 px-3.5 rounded-full text-[12px] flex items-center gap-1.5 transition-colors', view === v ? 'text-bg-base' : '')}>
-                  {view === v && <motion.span layoutId="explore-view" className="absolute inset-0 rounded-full bg-text-main" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
+                <button key={v} onClick={() => pickView(v)} className={cn('relative h-9 px-4 rounded-full text-[17px] flex items-center gap-1.5 transition-colors', view === v ? 'text-[#FBFBF4]' : '')}>
+                  {view === v && <motion.span layoutId="explore-view" className="absolute inset-0 rounded-full bg-red" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
                   <Icon className="relative w-3.5 h-3.5" /><span className="relative">{l}</span>
                 </button>
               ))}
@@ -242,11 +230,11 @@ const ExplorePage = () => {
             ))}
           </div>
           )}
-          {!loading && total === 0 && <p className="font-serif italic text-3xl text-center py-20">No books match these filters.</p>}
+          {!loading && total === 0 && <p className="font-display text-5xl text-center py-20">No books match these filters.</p>}
           <div ref={sentinel} className="h-10" />
           {loading && <Spinner label={books.length ? 'Loading more' : 'Loading'} />}
           {total !== null && books.length >= total && total > 0 && (
-            <p className="label text-center pt-10">That’s all {total.toLocaleString()}. Try another genre.</p>
+            <p className="caps text-center pt-10">That’s all {total.toLocaleString()}. Try another genre.</p>
           )}
         </div>
       </div>

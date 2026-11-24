@@ -10,6 +10,7 @@ import ReviewCard from '../components/ReviewCard';
 import { CoverImage, EASE, Empty, FadeIn, RevealText, SectionTitle, Spinner, Stars, UserLink, formatDate } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { coverPalette } from '../utils/colors';
+import { Book3D, DogEar } from '../components/Dogs';
 import { ShareToFriend } from '../components/social';
 import { deleteEntry, getBookDetails, getBookReviews, getReadersNow, getRecommendations, removeShelf, setShelf } from '../services/api';
 
@@ -55,7 +56,6 @@ const BookDetailsPage = () => {
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
   const coverY = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
-  const coverRotate = useTransform(scrollYProgress, [0, 1], [0, -6]);
 
   const load = useCallback(async () => {
     const decoded = decodeURIComponent(title);
@@ -103,7 +103,7 @@ const BookDetailsPage = () => {
   if (error || !book) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-        <p className="font-serif italic text-5xl mb-8">{error || 'This book does not exist.'}</p>
+        <p className="font-serif text-5xl mb-8">{error || 'This book does not exist.'}</p>
         <NeoButton onClick={() => navigate('/explore')}>Back to the catalogue</NeoButton>
       </div>
     );
@@ -123,23 +123,9 @@ const BookDetailsPage = () => {
 
   return (
     <div className="relative">
-      {/* Ambient tint pulled from the cover */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[110vh] -z-0 overflow-hidden" aria-hidden="true">
-        <motion.div
-          className="absolute -top-[30%] -left-[10%] w-[80vw] h-[80vw] rounded-full blur-[120px]"
-          animate={{ background: palette[0] || 'transparent', opacity: palette.length ? 0.28 : 0 }}
-          transition={{ duration: 1.4, ease: EASE }}
-        />
-        <motion.div
-          className="absolute top-[10%] right-[-20%] w-[60vw] h-[60vw] rounded-full blur-[140px]"
-          animate={{ background: palette[1] || 'transparent', opacity: palette.length ? 0.22 : 0 }}
-          transition={{ duration: 1.4, ease: EASE }}
-        />
-      </div>
-
       <div className="relative max-w-[1400px] mx-auto px-5 sm:px-8 lg:px-10 pt-4 pb-24">
         {/* Breadcrumb */}
-        <div className="flex items-center justify-between border-t border-border pt-3 mb-10">
+        <div className="flex items-center justify-between mb-10">
           <button onClick={() => navigate(-1)} className="label !text-text-main flex items-center gap-1.5 group">
             <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" /> Back
           </button>
@@ -153,24 +139,22 @@ const BookDetailsPage = () => {
         {/* Hero */}
         <section ref={heroRef} className="grid grid-cols-12 gap-6 lg:gap-10 mb-24">
           <div className="col-span-12 md:col-span-5 lg:col-span-4">
-            <motion.div style={{ y: coverY, rotate: coverRotate }} className="w-[70%] md:w-full max-w-[380px] mx-auto md:mx-0 [perspective:1000px]">
-              <motion.div
-                initial={{ rotateY: -35, opacity: 0, x: -40 }}
-                animate={{ rotateY: 0, opacity: 1, x: 0 }}
-                transition={{ duration: 1.4, ease: EASE }}
-                whileHover={{ rotateY: 12, rotateX: -4 }}
-                className="relative aspect-[2/3] rounded-[3px] overflow-hidden shadow-[0_50px_80px_-30px_rgba(0,0,0,0.55)]"
-              >
-                <CoverImage book={book} eager />
-                <span className="pointer-events-none absolute inset-y-0 left-0 w-[8%] bg-gradient-to-r from-black/30 via-white/10 to-transparent" />
+            <motion.div style={{ y: coverY }} className="relative w-fit mx-auto md:mx-0 mt-6 md:ml-6">
+              <motion.div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] aspect-square rounded-full bg-pink"
+                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 1.1, ease: EASE }} />
+              <motion.div className="relative" initial={{ rotate: -12, y: 80, opacity: 0 }} animate={{ rotate: 0, y: 0, opacity: 1 }} transition={{ duration: 1.2, ease: EASE, delay: 0.1 }}>
+                <Book3D book={book} width={typeof window !== 'undefined' && window.innerWidth < 768 ? 210 : 280}><CoverImage book={book} eager /></Book3D>
+              </motion.div>
+              <motion.div className="absolute -right-14 -bottom-10 w-32 hidden sm:block" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.8, ease: EASE }}>
+                <DogEar body={false} ribbon={false} prop="glasses" seed={(book.book_id || 3) % 50} />
               </motion.div>
             </motion.div>
             {palette.length > 0 && (
-              <div className="flex gap-2 mt-8 justify-center md:justify-start">
+              <div className="flex gap-1.5 mt-14 justify-center md:justify-start items-center">
                 {palette.map((c, i) => (
-                  <motion.span key={c + i} title={c} className="w-4 h-4 block" style={{ background: c }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6 + i * 0.07, duration: 0.5, ease: EASE }} />
+                  <motion.span key={c + i} title={c} className="w-5 h-5 rounded-full block border border-red/20" style={{ background: c }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6 + i * 0.07, duration: 0.5, ease: EASE }} />
                 ))}
-                <span className="label self-center ml-2">Cover palette</span>
+                <span className="caps self-center ml-2 opacity-70">Cover palette</span>
               </div>
             )}
           </div>
@@ -181,15 +165,15 @@ const BookDetailsPage = () => {
                 <Link key={cat} to={`/explore?genre=${encodeURIComponent(cat)}`} className="label link-draw">{cat}</Link>
               ))}
             </div>
-            <RevealText as="h1" delay={0.1} className="font-serif text-[clamp(2.8rem,7.5vw,7.5rem)] leading-[0.88] tracking-[-0.02em] break-words">
+            <RevealText as="h1" delay={0.1} className="font-display text-[clamp(3.4rem,8vw,8rem)] break-words">
               {titleLines(book.title)}
             </RevealText>
-            {book.subtitle && <p className="font-serif italic text-[clamp(1.2rem,2.2vw,1.9rem)] text-text-muted mt-3">{book.subtitle}</p>}
+            {book.subtitle && <p className="font-serif text-[clamp(1.2rem,2.2vw,1.9rem)] text-text-muted mt-3">{book.subtitle}</p>}
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8">
               <span className="label">Written by</span>
               {book.authors?.map((a) => (
-                <Link key={a} to={`/author/${encodeURIComponent(a)}`} className="font-wide font-medium text-[15px] link-under">{a}</Link>
+                <Link key={a} to={`/author/${encodeURIComponent(a)}`} className="caps font-medium text-[15px] link-under">{a}</Link>
               ))}
             </div>
 
@@ -263,7 +247,7 @@ const BookDetailsPage = () => {
                       <span className="text-[13px] tabular-nums w-28">{formatDate(e.date_read || e.created_at)}</span>
                       <Stars value={e.rating} />
                       {e.is_liked && <Heart className="w-3.5 h-3.5 text-accent-red fill-accent-red" />}
-                      {e.review_text && <span className="text-[13px] text-text-muted truncate max-w-xs font-serif italic">“{e.review_text}”</span>}
+                      {e.review_text && <span className="text-[13px] text-text-muted truncate max-w-xs font-serif ">“{e.review_text}”</span>}
                       <span className="ml-auto flex gap-1">
                         <button aria-label="Edit entry" onClick={() => { setEditing(e); setLogOpen(true); }} className="w-8 h-8 rounded-full hover:bg-text-main hover:text-bg-base flex items-center justify-center transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
                         <button aria-label="Delete entry" onClick={() => removeEntry(e)} className="w-8 h-8 rounded-full hover:bg-accent-red hover:text-white flex items-center justify-center transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -323,7 +307,7 @@ const BookDetailsPage = () => {
                   ].map(([n, t, d]) => (
                     <div key={n}>
                       <p className="display-num text-4xl text-accent-red">{n}</p>
-                      <p className="font-wide font-medium text-[12px] mt-2 mb-1">{t}</p>
+                      <p className="caps font-medium text-[12px] mt-2 mb-1">{t}</p>
                       <p className="text-text-muted leading-snug">{d}</p>
                     </div>
                   ))}

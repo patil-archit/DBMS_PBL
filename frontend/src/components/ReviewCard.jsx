@@ -52,7 +52,7 @@ const ReviewCard = ({ review }) => {
       {review.review_text ? (
         <p className="font-serif text-[1.35rem] leading-[1.35] whitespace-pre-wrap break-words">“{review.review_text}”</p>
       ) : (
-        <p className="text-text-muted font-serif italic text-lg">Rated without a review.</p>
+        <p className="text-text-muted font-serif text-lg">Rated without a review.</p>
       )}
       <footer className="flex flex-wrap items-center gap-4 mt-4 text-[12px]">
         <button onClick={toggleLike} aria-pressed={likes.liked} className={cn('flex items-center gap-1', likes.liked && 'text-accent-red')}>

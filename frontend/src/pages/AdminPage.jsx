@@ -400,7 +400,7 @@ const AdminPage = () => {
 
   return (
     <Page>
-      <PageTitle kicker="( Staff ) catalogue, reports, analytics and audit log">{isAdmin ? 'Admin' : 'Moderation'}</PageTitle>
+      <PageTitle animal="owl" kicker="( Staff ) catalogue, reports, analytics and audit log">{isAdmin ? 'Admin' : 'Moderation'}</PageTitle>
       <Tabs active={tab} onChange={setTab} tabs={tabs} />
       {tab === 'overview' && <Overview />}
       {tab === 'moderation' && <Moderation />}

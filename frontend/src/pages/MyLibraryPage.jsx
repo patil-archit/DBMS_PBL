@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookMarked, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
 import DiaryList from '../components/DiaryList';
@@ -9,9 +9,10 @@ import ListCard from '../components/ListCard';
 import NeoButton from '../components/NeoButton';
 import { Empty, Page, PageTitle, Spinner, Tabs } from '../components/ui';
 import { getMyLists, getUserDiary, getUserFollowedAuthors, getUserShelves } from '../services/api';
+import SignInGate from '../components/SignInGate';
 
 const MyLibraryPage = () => {
-  const { currentUser, me, loginWithGoogle, loading: authLoading } = useAuth();
+  const { currentUser, me, loading: authLoading } = useAuth();
   const [tab, setTab] = useState('diary');
   const [diary, setDiary] = useState(null);
   const [shelves, setShelves] = useState({ want_to_read: [], currently_reading: [] });
@@ -36,16 +37,7 @@ const MyLibraryPage = () => {
   if (authLoading) return <Spinner />;
 
   if (!currentUser) {
-    return (
-      <Page className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <BookMarked className="w-24 h-24 mb-6 text-accent-blue" />
-        <h1 className="text-4xl md:text-5xl font-medium mb-6 uppercase tracking-tight">Your reading diary</h1>
-        <p className="text-xl text-text-muted mb-8 max-w-2xl font-medium">
-          Sign in to log books with ratings and reviews, keep shelves, make lists and set a yearly reading goal.
-        </p>
-        <NeoButton onClick={loginWithGoogle} variant="primary" size="lg">Sign in with Google</NeoButton>
-      </Page>
-    );
+    return <SignInGate animal="bear" title="Your reading diary" text="Log books with ratings and reviews, keep shelves, make lists and set a yearly reading goal." prop="glasses" seed={22} />;
   }
 
   if (!diary) return <Spinner label="Loading your books…" />;
@@ -61,7 +53,7 @@ const MyLibraryPage = () => {
 
   return (
     <Page>
-      <PageTitle
+      <PageTitle animal="rabbit" prop="bow"
         kicker="( Library ) your diary, shelves and lists"
         right={me && (
           <div className="flex flex-col items-end gap-1">

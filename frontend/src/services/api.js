@@ -45,7 +45,7 @@ export const getGenreIndex = () => data(api.get('/discover/genres'));
 export const getRandomBook = (genre) => data(api.get('/discover/random', { params: genre ? { genre } : {} }));
 export const getBookOfTheDay = () => data(api.get('/discover/today'));
 export const getCatalogueStats = () => data(api.get('/discover/stats'));
-export const getReels = (mode = 'for_you', genre) => data(api.get('/reels', { params: { mode, ...(genre ? { genre } : {}) } }));
+export const getFlips = (mode = 'for_you', genre) => data(api.get('/flips', { params: { mode, ...(genre ? { genre } : {}) } }));
 export const getBookTakes = (bookId) => data(api.get(`/books/${bookId}/takes`));
 export const postTake = (bookId, text, vibe) => data(api.post('/takes', { book_id: bookId, text, vibe }));
 export const likeTake = (takeId) => data(api.post(`/takes/${takeId}/like`));

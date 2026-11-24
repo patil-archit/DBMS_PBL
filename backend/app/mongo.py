@@ -5,7 +5,7 @@ Collections
   activity_logs          views / searches / clicks (used for trending books)
   chat_sessions          chatbot conversations, one document per conversation
   saved_recommendations  cached recommendation lists; a TTL index deletes them after 1 hour
-  book_takes             short notes on books for the reels feed, seen only by the author's followers
+  book_takes             short notes on books for the Flips feed, public (private accounts: followers only)
   messages               direct messages between readers who follow each other
   presence               last time each reader was active ("online now")
   user_state             per-reader settings such as when notifications were last read

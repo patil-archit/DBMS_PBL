@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, RotateCcw, Share2 } from 'lucide-react';
 import BookCard from '../components/BookCard';
 import NeoButton, { cn } from '../components/NeoButton';
 import { CoverImage, EASE } from '../components/ui';
+import { DogEar } from '../components/Dogs';
 import { useAuth } from '../contexts/AuthContext';
 import { browseBooks, setFavouriteGenres } from '../services/api';
 
@@ -164,19 +165,19 @@ const QuizPage = () => {
         <AnimatePresence mode="wait">
           {step === -1 && (
             <motion.div key="intro" className="flex-1 flex flex-col items-center justify-center text-center" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }} transition={{ duration: 0.6, ease: EASE }}>
-              <p className="text-[14px] font-medium">BookLog Quiz</p>
-              <h1 className="font-serif text-[clamp(2.8rem,7vw,5.6rem)] leading-[0.95] mt-3">What is your <br />reader profile?</h1>
-              <p className="text-[16px] text-text-muted mt-5 max-w-md">Five quick questions, from mood to era. We’ll match you with a profile and real books from the catalogue.</p>
-              <div className="flex items-center gap-2 mt-10">
-                <button onClick={() => setStep(0)} className="h-14 px-8 rounded-full bg-surface-white text-[14px] font-medium hover:bg-text-main hover:text-bg-base transition-colors">Start quiz</button>
-                <motion.button whileHover={{ x: 4 }} onClick={() => setStep(0)} className="w-14 h-14 rounded-full bg-mustard text-espresso flex items-center justify-center" aria-label="Start"><ArrowRight className="w-5 h-5" /></motion.button>
-              </div>
+              <DogEar animal="owl" cover="#E33529" seed={17} body={false} ribbon={false} className="w-40 sm:w-48 mb-2" />
+              <p className="caps">BookLog quiz</p>
+              <h1 className="font-display text-[clamp(3.6rem,9vw,7.5rem)] mt-3">What is your <br />reader profile?</h1>
+              <p className="caps mt-5 max-w-md leading-snug">Five quick questions, from mood to era. We’ll match you with a profile and real books from the catalogue.</p>
+              <button onClick={() => setStep(0)} className="mt-10 h-14 px-9 rounded-full bg-red text-[#FBFBF4] font-display text-[26px] inline-flex items-center gap-2 hover:-rotate-3 hover:scale-105 transition-transform duration-500">
+                Start quiz <ArrowRight className="w-5 h-5" />
+              </button>
             </motion.div>
           )}
 
           {step >= 0 && step < QUESTIONS.length && (
             <motion.div key={`q${step}`} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 0.5, ease: EASE }}>
-              <h2 className="font-serif text-[clamp(2.2rem,5.5vw,4.2rem)] leading-[1] text-center">{QUESTIONS[step].q}</h2>
+              <h2 className="font-display text-[clamp(2.6rem,6vw,5rem)] text-center">{QUESTIONS[step].q}</h2>
               <div className="grid sm:grid-cols-2 gap-3 mt-10">
                 {QUESTIONS[step].a.map((a, i) => (
                   <motion.button
@@ -205,7 +206,7 @@ const QuizPage = () => {
                 <motion.span className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-accent-red/30 blur-3xl" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 6, repeat: Infinity }} />
                 <p className="text-[12px] uppercase tracking-[0.14em] opacity-60 relative">Your reader profile</p>
                 <h2 className="font-statement text-[clamp(2.8rem,8vw,6rem)] mt-3 relative">{result.name}</h2>
-                {result.flavour && <p className="font-serif italic text-2xl text-sand relative">…{result.flavour}</p>}
+                {result.flavour && <p className="font-serif text-2xl text-sand relative">…{result.flavour}</p>}
                 <p className="font-serif text-[1.35rem] leading-[1.35] mt-5 max-w-xl relative">{result.blurb}</p>
                 <div className="flex flex-wrap gap-2 mt-6 relative">
                   {result.top.map((g) => <Link key={g} to={`/explore?genre=${encodeURIComponent(g)}`} className="h-9 px-4 rounded-full bg-latte/10 hover:bg-latte hover:text-espresso transition-colors text-[13px] flex items-center">{g}</Link>)}

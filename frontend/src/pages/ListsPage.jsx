@@ -19,7 +19,7 @@ export const ListsPage = () => {
 
   return (
     <Page>
-      <PageTitle
+      <PageTitle animal="bear" prop="crown"
         kicker="( Lists ) ranked collections by readers"
         right={currentUser && <Link to="/lists/new"><NeoButton variant="primary"><Plus className="w-5 h-5 mr-1" /> New list</NeoButton></Link>}
       >

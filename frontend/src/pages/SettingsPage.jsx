@@ -6,6 +6,7 @@ import { GenreChips } from '../components/GenrePicker';
 import { Card, ErrorBox, Field, Input, Modal, Page, PageTitle, Select, Spinner, TextArea, Toggle } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteAccount, errorMessage, exportMyData, getGenres, setFavouriteGenres, updateMe } from '../services/api';
+import SignInGate from '../components/SignInGate';
 
 const LANGUAGES = [['en', 'English'], ['hi', 'Hindi'], ['kn', 'Kannada'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German']];
 
@@ -31,7 +32,7 @@ const SettingsPage = () => {
   }, []);
 
   if (loading) return <Spinner />;
-  if (!me) return <Page><p className="font-medium">Sign in to change your settings.</p></Page>;
+  if (!me) return <SignInGate animal="owl" title="Settings" text="Sign in to change your profile, privacy and data." prop="glasses" seed={12} />;
   if (!form) return <Spinner />;
 
   const save = async (e) => {
@@ -68,7 +69,7 @@ const SettingsPage = () => {
 
   return (
     <Page className="max-w-3xl">
-      <PageTitle kicker="( Settings ) account, privacy and your data">Settings</PageTitle>
+      <PageTitle animal="owl" kicker="( Settings ) account, privacy and your data">Settings</PageTitle>
       <form onSubmit={save} className="space-y-8">
         <Card>
           <h2 className="font-medium text-2xl mb-4">Profile</h2>
@@ -82,7 +83,7 @@ const SettingsPage = () => {
               {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
             </Select>
           </Field>
-          <Toggle checked={form.is_private} onChange={(v) => setForm({ ...form, is_private: v })} label="Private diary (only you can see your diary, shelves and reading goal)" />
+          <Toggle checked={form.is_private} onChange={(v) => setForm({ ...form, is_private: v })} label="Private account (only you see your diary, shelves and reading goal; only your followers see your takes on Flips)" />
         </Card>
 
         <Card>

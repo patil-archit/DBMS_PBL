@@ -2,15 +2,19 @@
 
 A social book diary and recommendation system. Log books with ratings and reviews, keep shelves and lists, follow other readers, get recommendations that explain themselves, and ask a chatbot for books in plain language.
 
+*DBMS course project (CD252IA), Department of ISE, RV College of Engineering, by Archit Patil and Bhavya Chawat.*
+
 **Stack:** PostgreSQL 15+ (main database) · Neo4j 5 (social graph) · MongoDB (logs, chat, cached recommendations) · FastAPI · React 19 + Vite + Tailwind · Framer Motion + Lenis · Firebase Auth · OpenAI (chatbot)
 
 ## Features
 
 **Account**: Google sign-in, unique username, bio, language, private diary, favourite genres (asked on first sign-in), export all your data as JSON, delete your account and everything in it. Roles: reader, moderator, admin.
 
-**Books & search**: a catalogue of 20,000+ books with covers, descriptions, authors (bios and photos) and publishers. Live search as you type by title, author, genre or ISBN with spelling mistakes allowed (pg_trgm), filter by genre, language and minimum rating; the page shows how many milliseconds PostgreSQL took. A **⌘K / Ctrl+K command palette** searches from anywhere. Book pages show details, reading time, average rating, reviews, similar books (with the scoring explained) and which people you follow have read it; the page tints itself with colours pulled from the cover.
+**Books & search**: a catalogue of 20,000+ books with covers, descriptions, authors (bios and photos) and publishers. Live search as you type by title, author, genre or ISBN with spelling mistakes allowed (pg_trgm), filter by genre, language and minimum rating; the page shows how many milliseconds PostgreSQL took. A **⌘K / Ctrl+K command palette** searches from anywhere. Book pages show details, reading time, average rating, reviews, similar books (with the scoring explained) and which people you follow have read it, shown as a 3D book with the cover's colour palette.
 
 **Explore**: browse the whole catalogue with infinite scroll, filtered by genre, decade, length and rating and sorted by most read, highest rated, newest, oldest, shortest or longest. "Spin the shelf" picks a random well-rated book. The home page has a book of the day, the catalogue in numbers (books per decade of publication) and a genre index.
+
+**Flips**: flip through books one screen at a time (For you, Latest, Following). Readers leave short "takes" on a book (a fun fact, a hot take, a mood) that everyone can see with the reader's name, and anyone signed in can like them. Takes live in MongoDB; the one exception comes from PostgreSQL: a private account's takes are shown only to its followers (`users.is_private` + `user_follow`).
 
 **Diary, shelves, lists**: log a book with date, half-star rating (0.5 to 5), review and a like; edit or delete entries; re-reads are separate entries. Want to Read and Reading Now shelves. Yearly reading goal with progress. Public or private ranked lists you can re-order. Like and comment on reviews and lists. Report reviews to moderators.
 
@@ -28,9 +32,13 @@ Not built (left out on purpose): predicted ratings and automatic theme/mood tagg
 
 ## Design
 
-Editorial and quiet: a grey canvas, tiny grotesk labels (Inter Tight), wide display caps (Archivo Expanded) and a serif for big moments (Instrument Serif), with one red accent. Light and dark mode. The logo is a solid "B" split into a spine and a block of pages, with a red bookmark ribbon (`frontend/src/components/Logo.jsx`, `frontend/public/favicon.svg`).
+"Dog-eared": cream paper, one tomato red for type, tall condensed caps (Bayon) for anything loud and small uppercase grotesk (Inter Tight) for everything else, with pink and sky-blue sections. Light mode and a night-reading mode.
 
-Motion: an intro that draws the mark and wipes away, smooth scrolling (Lenis), page transitions, a custom cursor that labels covers, 3D covers that tilt toward the pointer, and a scroll-driven showcase on the home page (covers fly through 3D space, a rolling counter, a list that blurs everything but the focused book, and colour swatches extracted from each cover). Everything respects `prefers-reduced-motion`.
+The cast is a set of original line-drawn **book-dogs** (`frontend/src/components/Dogs.jsx`). Each is a book that became a dog: its floppy ears are the hardcover boards, its shaggy coat is the page edges and its leash is the red ribbon bookmark. Each one has an accessory (glasses, beret, quill, headphones, crown, bow), and every feature gets its own dog. They blink, their eyes follow the cursor, their ears swing and the ribbon sways. The logo is a book-dachshund that trots across the loading screen.
+
+Motion and 3D: real CSS 3D books (cover, spine with the title, page block) that turn toward the pointer, words that rise from behind masks as you scroll, floating page-balls, parallax, a ribbon that draws itself down the page, and a red flood when you enter from the cover page. Everything respects `prefers-reduced-motion`.
+
+The home page tells the whole project top to bottom: hero, about (with live counts), "our shelves" (every feature, each with its dog), how it works, your circle (signed in), today's pick as a 3D book, authors with bios, "pick your pace" (yearly reading goal), the assistant, and readers.
 
 ## How the three databases work together
 
@@ -83,7 +91,11 @@ backend/venv/bin/python backend/db/seed_from_csv.py
 backend/venv/bin/python backend/db/import_openlibrary.py
 ```
 
-`seed_from_csv.py` drops and recreates everything, runs the migrations (including creating the `booklog_app` role) and loads the CSV catalogue. `import_openlibrary.py` adds books from Open Library across ~100 subjects with covers, descriptions, author bios and photos (`--per-genre 300 --pages 6 --workers 8` gives 20,000+; API responses are cached, so re-runs are fast). Both run as your own Postgres account.
+```bash
+backend/venv/bin/python backend/db/backfill_openlibrary.py
+```
+
+`seed_from_csv.py` drops and recreates everything, runs the migrations (including creating the `booklog_app` role) and loads the CSV catalogue. `import_openlibrary.py` adds books from Open Library across ~100 subjects with covers, descriptions, author bios and photos (`--per-genre 300 --pages 6 --workers 8` gives 20,000+; API responses are cached, so re-runs are fast). `backfill_openlibrary.py` finishes an import that was stopped early: it fills in real descriptions and author bios and photos that were skipped, and can be stopped and re-run at any time. With `--wikipedia` it falls back to the Wikipedia page summary for authors Open Library has nothing on, accepting it only when the page describes a writer (Wikipedia text is CC BY-SA 4.0). All three run as your own Postgres account.
 
 ### 3. Backend
 
@@ -155,6 +167,7 @@ backend/
   db/migrations/                002 phase 2 (tables, triggers, RLS, views), 003 app role
   db/seed_from_csv.py           reset + load CSV catalogue
   db/import_openlibrary.py      add books from Open Library
+  db/backfill_openlibrary.py    fill in skipped descriptions, author bios and photos
   db/sync_neo4j.py              rebuild Neo4j from PostgreSQL
   db/migrate_from_neo4j.py      one-time import from the old Neo4j app
   db/demo_queries.sql           presentation demo

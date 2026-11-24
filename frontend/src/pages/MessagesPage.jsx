@@ -3,11 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, BookOpen, Lock, Paperclip, Search, Send, X } from 'lucide-react';
 import { cn } from '../components/NeoButton';
-import NeoButton from '../components/NeoButton';
 import { Avatar, CoverImage, EASE, timeAgo } from '../components/ui';
 import { OnlineDot, usePulse } from '../components/social';
 import { useAuth } from '../contexts/AuthContext';
 import { getContacts, getConversation, getThreads, markThreadRead, searchBooks, sendMessage } from '../services/api';
+import SignInGate from '../components/SignInGate';
 
 const dayLabel = (iso) => {
   const d = new Date(iso);
@@ -202,7 +202,7 @@ const Conversation = ({ username, onSent }) => {
 const MessagesPage = () => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const { currentUser, loginWithGoogle, loading } = useAuth();
+  const { currentUser, loading } = useAuth();
   const [threads, setThreads] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [q, setQ] = useState('');
@@ -218,13 +218,7 @@ const MessagesPage = () => {
 
   if (loading) return null;
   if (!currentUser) {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6">
-        <p className="font-statement text-[clamp(3rem,9vw,8rem)]">Messages</p>
-        <p className="font-serif text-2xl mt-3 max-w-lg">Talk books with the readers you follow. Share a title, swap recommendations, plan a read-along.</p>
-        <NeoButton size="lg" className="mt-8" onClick={loginWithGoogle}>Sign in to message</NeoButton>
-      </div>
-    );
+    return <SignInGate animal="rabbit" title="Messages" text="Talk books with the readers you follow. Share a title, swap recommendations, plan a read-along." button="Sign in to message" prop="beret" seed={8} />;
   }
 
   const inThreads = new Set((threads || []).map((t) => t.username));

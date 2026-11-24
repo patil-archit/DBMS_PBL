@@ -7,6 +7,7 @@ import NeoButton from '../components/NeoButton';
 import { Avatar, Card, Empty, Input, Page, PageTitle, SectionTitle, Spinner, Tabs, UserLink } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { getFollowers, getFollowing, getSuggestions, searchPeople } from '../services/api';
+import SignInGate from '../components/SignInGate';
 
 const PersonRow = ({ p, extra }) => (
   <li className="flex items-center gap-3 bg-surface-white border border-border p-3">
@@ -72,7 +73,7 @@ const NetworkGraph = ({ me, following, followers }) => {
 };
 
 const PeoplePage = () => {
-  const { me, loginWithGoogle, loading: authLoading } = useAuth();
+  const { me, loading: authLoading } = useAuth();
   const [tab, setTab] = useState('suggestions');
   const [q, setQ] = useState('');
   const [results, setResults] = useState(null);
@@ -94,17 +95,12 @@ const PeoplePage = () => {
 
   if (authLoading) return <Spinner />;
   if (!me) {
-    return (
-      <Page className="text-center">
-        <PageTitle kicker="( People ) Neo4j social graph">People</PageTitle>
-        <NeoButton variant="primary" onClick={loginWithGoogle}>Sign in to find readers</NeoButton>
-      </Page>
-    );
+    return <SignInGate animal="cat" title="Find your readers" text="Follow people with your taste. Taste match and friends-of-friends come from the Neo4j social graph." button="Sign in to find readers" prop="crown" seed={40} />;
   }
 
   return (
     <Page>
-      <PageTitle kicker="( People ) friends of friends, taste match and steps apart, from Neo4j">People</PageTitle>
+      <PageTitle animal="cat" prop="beret" kicker="( People ) friends of friends, taste match and steps apart, from Neo4j">People</PageTitle>
       <div className="grid lg:grid-cols-[1fr_380px] gap-10">
         <div className="min-w-0">
           <form onSubmit={search} className="flex gap-3 mb-8">

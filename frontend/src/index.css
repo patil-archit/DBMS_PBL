@@ -1,68 +1,155 @@
 @import "tailwindcss";
 
 /*
-  BookLog design system, "roastery" edition: warm latte paper, espresso ink,
-  tall condensed caps for statements, a light display face for headlines and
-  one signal red. Token names are shared by every page; light/dark swap values.
+  BookLog design system, "dog-eared" edition.
+  Cream paper, one tomato red for type and ink, tall condensed caps (Bayon)
+  for anything that speaks loudly, small uppercase grotesk for everything
+  else. Pink and sky sections carry the page; line-drawn book-dogs carry the
+  mood. Token names are shared by every page; light/dark swap values.
 */
 @theme {
-  --color-bg-base: #F3E3D3;
-  --color-surface-white: #FBF1E8;
-  --color-text-main: #2B1B14;
-  --color-text-muted: #8C6E5E;
-  --color-border: rgba(43, 27, 20, 0.14);
-  --color-ink: #2B1B14;
-  --color-paper: #F3E3D3;
-  --color-line: rgba(43, 27, 20, 0.14);
+  --color-bg-base: #F3F3E9;
+  --color-surface-white: #FBFBF4;
+  --color-text-main: #D22F23;
+  --color-text-muted: #C0665C;
+  --color-border: rgba(210, 47, 35, 0.2);
 
-  --color-espresso: #2B1B14;
-  --color-roast: #1A100C;
-  --color-cocoa: #3A2519;
-  --color-latte: #EDD1BD;
-  --color-cream: #FCF3ED;
-  --color-sand: #E3C1AD;
-  --color-tan: #BE9A83;
-  --color-forest: #0F1D17;
-  --color-mustard: #F2B530;
+  --color-red: #E33529;
+  --color-red-deep: #C42B20;
+  --color-pink: #F3C3CB;
+  --color-blush: #F6DADD;
+  --color-rose: #EDBDD1;
+  --color-sky: #AFD8FB;
+  --color-steel: #2B6786;
+  --color-ball: #E4EE6A;
+  --color-ink-line: #1D1A17;
+  --color-fur: #FFFFFB;
 
-  --color-accent-red: #D8322B;
-  --color-accent-teal: #1F4D3F;
-  --color-accent-blue: #C9D4DD;
-  --color-accent-navy: #2B1B14;
-
-  --shadow-brutal: 0 1px 0 0 rgba(0, 0, 0, 0.02);
-  --shadow-brutal-lg: 0 30px 80px -30px rgba(43, 27, 20, 0.45);
+  --shadow-brutal: none;
+  --shadow-brutal-lg: 0 30px 60px -30px rgba(196, 43, 32, 0.45);
   --shadow-brutal-hover: none;
-  --shadow-cover: 0 22px 40px -18px rgba(43, 27, 20, 0.55), 0 2px 6px -2px rgba(43, 27, 20, 0.2);
+  --shadow-cover: 0 18px 30px -16px rgba(80, 20, 12, 0.55), 0 2px 5px -2px rgba(80, 20, 12, 0.25);
 
   --font-main: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
-  --font-wide: 'Oswald', 'Inter Tight', sans-serif;
-  --font-serif: 'Hanken Grotesk', 'Inter Tight', sans-serif;
-  --font-pixel: 'Oswald', 'Inter Tight', sans-serif;
+  --font-display: 'Bayon', 'Inter Tight', sans-serif;
+  --font-wide: 'Bayon', 'Inter Tight', sans-serif;
+  --font-serif: 'Bayon', 'Inter Tight', sans-serif;
+  --font-pixel: 'Bayon', 'Inter Tight', sans-serif;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Older names point at the live tokens (inline, so a page palette that
+   overrides --color-red or --color-text-main also recolours them). */
+@theme inline {
+  --color-ink: var(--color-text-main);
+  --color-paper: var(--color-bg-base);
+  --color-line: var(--color-border);
+  --color-espresso: var(--color-red);
+  --color-roast: var(--color-red-deep);
+  --color-cocoa: var(--color-text-main);
+  --color-latte: var(--color-bg-base);
+  --color-cream: var(--color-surface-white);
+  --color-sand: var(--color-blush);
+  --color-tan: var(--color-pink);
+  --color-forest: var(--color-steel);
+  --color-mustard: var(--color-ball);
+  --color-accent-red: var(--color-red);
+  --color-accent-teal: var(--color-steel);
+  --color-accent-blue: var(--color-sky);
+  --color-accent-navy: var(--color-steel);
+}
+
+/*
+  Every page has its own paper colour, like the sections of a picture book.
+  Set on <html data-page="…"> by the app shell. Night reading overrides all.
+*/
+:root[data-page='pink']:not([data-theme='dark']) {
+  --color-bg-base: #F3C3CB;
+  --color-surface-white: #F9DDE2;
+  --color-text-main: #C42B20;
+  --color-text-muted: #B0504A;
+  --color-border: rgba(196, 43, 32, 0.25);
+  --color-pink: #EEA9B6;
+  --color-blush: #F9DDE2;
+}
+:root[data-page='sky']:not([data-theme='dark']) {
+  --color-bg-base: #AFD8FB;
+  --color-surface-white: #D2E9FD;
+  --color-text-main: #22597A;
+  --color-text-muted: #3F7A9B;
+  --color-border: rgba(34, 89, 122, 0.25);
+  --color-sky: #8FC3F2;
+  --color-pink: #F3C3CB;
+  --color-blush: #D2E9FD;
+}
+:root[data-page='blush']:not([data-theme='dark']) {
+  --color-bg-base: #F6DADD;
+  --color-surface-white: #FBEDEE;
+  --color-text-main: #C42B20;
+  --color-text-muted: #B65A52;
+  --color-border: rgba(196, 43, 32, 0.22);
+  --color-pink: #F0B9C3;
+  --color-blush: #FBEDEE;
+}
+:root[data-page='lime']:not([data-theme='dark']) {
+  --color-bg-base: #E4EE6A;
+  --color-surface-white: #F1F6B4;
+  --color-text-main: #B8271D;
+  --color-text-muted: #8F5A1E;
+  --color-border: rgba(184, 39, 29, 0.25);
+  --color-ball: #FBFBF4;
+  --color-blush: #F1F6B4;
+}
+:root[data-page='steel']:not([data-theme='dark']) {
+  --color-bg-base: #2B6786;
+  --color-surface-white: #34748F;
+  --color-text-main: #F3F3E9;
+  --color-text-muted: #B4D3E4;
+  --color-border: rgba(243, 243, 233, 0.22);
+  --color-steel: #1F5470;
+  --color-sky: #3F84A5;
+  --color-pink: #F3C3CB;
+  --color-blush: #34748F;
+  --color-ink-line: #1D1A17;
+  color-scheme: dark;
+}
+:root[data-page='rose']:not([data-theme='dark']) {
+  --color-bg-base: #EDBDD1;
+  --color-surface-white: #F6DBE6;
+  --color-text-main: #B8271D;
+  --color-text-muted: #A24F5E;
+  --color-border: rgba(184, 39, 29, 0.24);
+  --color-pink: #E59DBA;
+  --color-blush: #F6DBE6;
+}
+
+/* Night reading: deep cherry paper, pink ink */
 :root[data-theme='dark'] {
-  --color-bg-base: #1F140F;
-  --color-surface-white: #2B1B14;
-  --color-text-main: #EDD1BD;
-  --color-text-muted: #A98B78;
-  --color-border: rgba(237, 209, 189, 0.14);
-  --color-ink: #EDD1BD;
-  --color-paper: #1F140F;
-  --color-line: rgba(237, 209, 189, 0.14);
-  --color-accent-teal: #6FA897;
-  --color-accent-blue: #2A3440;
-  --color-accent-navy: #3A2519;
-  --shadow-cover: 0 22px 40px -18px rgba(0, 0, 0, 0.9), 0 2px 6px -2px rgba(0, 0, 0, 0.6);
+  --color-bg-base: #1F1110;
+  --color-surface-white: #2A1715;
+  --color-text-main: #F5B8AE;
+  --color-text-muted: #B97C73;
+  --color-border: rgba(245, 184, 174, 0.18);
+  --color-ink: #F5B8AE;
+  --color-paper: #1F1110;
+  --color-line: rgba(245, 184, 174, 0.18);
+  --color-pink: #5A2328;
+  --color-blush: #3A1B1B;
+  --color-rose: #4A2030;
+  --color-sky: #17384A;
+  --color-latte: #1F1110;
+  --color-cream: #2A1715;
+  --color-sand: #3A1B1B;
+  --color-tan: #5A2328;
+  --color-fur: #FBF4EC;
+  --shadow-cover: 0 18px 30px -16px rgba(0, 0, 0, 0.9), 0 2px 5px -2px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
-html {
-  background-color: var(--color-bg-base);
-}
+html { background-color: var(--color-bg-base); transition: background-color 0.6s var(--ease-out-expo); }
 
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
@@ -85,75 +172,82 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-text-muted); border-radius: 6px; }
 
-::selection {
-  background-color: var(--color-accent-red);
-  color: #fff;
-}
+::selection { background-color: var(--color-red); color: #FBFBF4; }
 
 /* ---------------------------------------------------------------
-   Type utilities
+   Type
    --------------------------------------------------------------- */
-@utility font-wide {
-  font-family: var(--font-wide);
+/* Tall condensed caps, the voice of the site */
+@utility font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
+  line-height: 0.86;
+}
+@utility font-statement {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 0.86;
+}
+@utility font-wide {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+@utility font-serif {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+}
+@utility font-pixel {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-/* Old pixel font slot now renders the wide display face */
-@utility font-pixel {
-  font-family: var(--font-wide);
+/* Small uppercase grotesk for labels and UI */
+@utility caps {
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  font-size: 0.9em;
 }
-
-@utility font-serif {
-  font-family: var(--font-serif);
-  font-weight: 300;
-  letter-spacing: -0.03em;
-}
-
-/* Tall condensed statement caps ("SINCE 1800, BOOKS that AWAKEN") */
-@utility font-statement {
-  font-family: var(--font-wide);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: -0.015em;
-  line-height: 0.92;
-}
-
 @utility label {
   font-size: 11px;
   line-height: 14px;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   font-weight: 500;
 }
-
 @utility value {
   font-size: 11px;
   line-height: 14px;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-main);
   font-weight: 500;
 }
-
 @utility display-num {
-  font-family: var(--font-wide);
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-weight: 400;
   line-height: 0.9;
 }
 
-/* Legacy brutalist utilities, softened */
 @utility shadow-brutal { box-shadow: none; }
 @utility shadow-brutal-lg { box-shadow: var(--shadow-brutal-lg); }
 @utility shadow-brutal-hover { box-shadow: none; }
 @utility shadow-cover { box-shadow: var(--shadow-cover); }
 @utility border-brutal { border: 1px solid var(--color-border); }
-@utility border-brutal-thick { border: 1px solid var(--color-border); }
+@utility border-brutal-thick { border: 1.5px solid var(--color-text-main); }
 
-/* Underline that draws in from the left on hover */
 @utility link-draw {
   background-image: linear-gradient(currentColor, currentColor);
   background-size: 0% 1px;
@@ -162,7 +256,6 @@ body {
   transition: background-size 0.6s var(--ease-out-expo);
   &:hover { background-size: 100% 1px; }
 }
-
 @utility link-under {
   background-image: linear-gradient(currentColor, currentColor);
   background-size: 100% 1px;
@@ -175,50 +268,20 @@ body {
 /* ---------------------------------------------------------------
    Motion
    --------------------------------------------------------------- */
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .marquee-track { animation: marquee 40s linear infinite; }
-@keyframes wall {
-  from { transform: translateY(0); }
-  to { transform: translateY(calc(-50% - 0.5rem)); }
-}
 .marquee:hover .marquee-track { animation-play-state: paused; }
 
-@keyframes rise {
-  from { transform: translateY(105%); }
-  to { transform: translateY(0); }
-}
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes wag { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+@keyframes trot { 0%, 100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }
+.blink { animation: blink 4.5s infinite; transform-box: fill-box; transform-origin: center; }
 
-@keyframes blink { 50% { opacity: 0; } }
-.blink { animation: blink 1.2s steps(1) infinite; }
-
-/* Film grain for the canvas */
-.grain::after {
-  content: '';
-  position: fixed;
-  inset: -50%;
-  pointer-events: none;
-  z-index: 200;
-  opacity: 0.045;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  animation: grain 1s steps(6) infinite;
-}
-@keyframes grain {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-3%, 2%); }
-  40% { transform: translate(2%, -3%); }
-  60% { transform: translate(-2%, -1%); }
-  80% { transform: translate(3%, 3%); }
-  100% { transform: translate(0, 0); }
-}
-
-/* Custom cursor only on precise pointers */
-@media (pointer: fine) {
-  .has-cursor, .has-cursor * { cursor: none !important; }
-  .has-cursor input, .has-cursor textarea, .has-cursor select, .has-cursor [contenteditable] { cursor: text !important; }
-}
+/* 3D book */
+.book3d { transform-style: preserve-3d; }
+.book3d > * { backface-visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -226,9 +289,33 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  .grain::after { display: none; }
 }
 
-/* Form controls follow the theme */
 input, textarea, select { color: inherit; }
 select option { background: var(--color-surface-white); color: var(--color-text-main); }
+
+/* ---------------------------------------------------------------
+   One voice for every control: buttons, chips and tabs speak in
+   Bayon caps, like the reference site. (Base layer, so a page can
+   still opt a button out with font-main / normal-case.)
+   --------------------------------------------------------------- */
+@layer base {
+  button, [role='tab'], .chip, a[class~='rounded-full'][class~='border'] {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.015em;
+    font-weight: 400;
+  }
+  /* Rows that hold sentences (threads, chats, notifications) stay readable */
+  button.text-left:not(.chip) {
+    font-family: var(--font-main);
+    text-transform: none;
+    letter-spacing: -0.005em;
+  }
+}
+/* Bayon runs small, so lift the tiny sizes older pages gave buttons and pill links */
+a[class~='rounded-full'][class~='border']:not(.caps):is([class*='text-[11px]'], [class*='text-[12px]'], [class*='text-[13px]'], [class*='text-[14px]']),
+button:not(.font-main):not(.caps):not(.text-left):is([class*='text-[10'], [class*='text-[11px]'], [class*='text-[12px]'], [class*='text-[13px]'], [class*='text-[14px]']) {
+  font-size: 17px;
+  line-height: 1;
+}

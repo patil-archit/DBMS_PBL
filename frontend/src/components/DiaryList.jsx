@@ -33,7 +33,7 @@ const DiaryList = ({ entries, editable = false, onChanged, emptyText = 'No books
     <div className="space-y-8">
       {groups.map((g) => (
         <section key={g.key}>
-          <h3 className="font-serif italic text-3xl mb-4 border-t border-border pt-3">{g.key}</h3>
+          <h3 className="font-serif text-3xl mb-4 border-t border-border pt-3">{g.key}</h3>
           <ul className="space-y-3">
             {g.items.map((e) => (
               <li key={e.entry_id} className="flex gap-4 bg-surface-white border border-border p-3">

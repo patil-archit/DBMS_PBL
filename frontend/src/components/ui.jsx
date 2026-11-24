@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useInView } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from './NeoButton';
+import { DogEar, Runner } from './Dogs';
 
 export const EASE = [0.16, 1, 0.3, 1];
 
@@ -78,78 +79,96 @@ export const Page = ({ children, className }) => (
 );
 
 /** Section opener: a label row, then an oversized title that rises into view. */
-export const PageTitle = ({ children, mark, kicker, right, className }) => (
-  <header className={cn('mb-12 md:mb-16', className)}>
-    <div className="flex items-center justify-between gap-4 border-t border-border pt-3 mb-6 md:mb-10">
-      <span className="label">{kicker || (mark ? `( ${mark} )` : 'BookLog')}</span>
-      <span className="label hidden sm:block">Index · {new Date().getFullYear()}</span>
-    </div>
+export const PageTitle = ({ children, mark, kicker, right, className, animal, prop, seed = 3 }) => (
+  <header className={cn('relative mb-12 md:mb-16', className)}>
+    <p className="caps text-text-main mb-4">{kicker || mark || 'BookLog'}</p>
     <div className="flex flex-wrap items-end justify-between gap-6">
-      <RevealText as="h1" className="font-wide font-medium text-[clamp(2.4rem,7vw,6.5rem)] leading-[0.92] tracking-[-0.02em]">
+      <RevealText as="h1" className="font-display text-[clamp(3.6rem,10vw,9rem)]">
         {children}
       </RevealText>
-      {right && <div className="pb-2">{right}</div>}
+      <div className="flex items-end gap-8 ml-auto">
+        {right && <div className="pb-3">{right}</div>}
+        {animal && (
+          <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, ease: EASE, delay: 0.2 }}
+            className="hidden sm:block w-32 md:w-44 -mb-4">
+            <DogEar animal={animal} prop={prop} seed={seed} body={false} />
+          </motion.div>
+        )}
+      </div>
     </div>
   </header>
 );
 
+/** A filter pill: Bayon caps, red when on. */
+export const Chip = ({ active, children, onClick, className }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'chip h-10 px-4 rounded-full border-2 text-[17px] leading-none whitespace-nowrap transition-colors duration-300',
+      active ? 'bg-red border-red text-[#FBFBF4]' : 'border-border hover:border-text-main',
+      className,
+    )}
+  >
+    {children}
+  </button>
+);
+
 export const SectionTitle = ({ children, mark, right, className }) => (
-  <div className={cn('flex flex-wrap items-end justify-between gap-3 mb-6 border-t border-border pt-3', className)}>
+  <div className={cn('flex flex-wrap items-end justify-between gap-3 mb-6', className)}>
     <div className="flex items-baseline gap-4">
-      {mark && <span className="label">{mark}</span>}
-      <h2 className="font-wide font-medium text-[17px] md:text-[19px]">{children}</h2>
+      {mark && <span className="caps opacity-70">{mark}</span>}
+      <h2 className="font-display text-[clamp(2rem,3.6vw,3rem)]">{children}</h2>
     </div>
     {right}
   </div>
 );
 
 export const Card = ({ children, className, ...props }) => (
-  <div className={cn('bg-surface-white border border-border rounded-[4px] p-5', className)} {...props}>
+  <div className={cn('bg-surface-white rounded-[28px] p-6', className)} {...props}>
     {children}
   </div>
 );
 
-export const Spinner = ({ label = 'Loading' }) => (
-  <div className="flex items-center justify-center py-20 gap-3">
-    <span className="relative w-2 h-2">
-      <span className="absolute inset-0 rounded-full bg-accent-red animate-ping" />
-      <span className="absolute inset-0 rounded-full bg-accent-red" />
-    </span>
-    <span className="label">{label}…</span>
+export const Spinner = ({ label = 'Fetching' }) => (
+  <div className="flex flex-col items-center justify-center py-20 gap-2 text-red">
+    <Runner className="w-20" />
+    <span className="caps">{label}…</span>
   </div>
 );
 
 export const Empty = ({ title, children }) => (
-  <div className="border-t border-border py-16 text-center">
-    <p className="font-serif italic text-3xl md:text-4xl mb-3">{title}</p>
-    {children && <div className="text-text-muted max-w-md mx-auto">{children}</div>}
+  <div className="rounded-[32px] bg-blush py-12 px-6 text-center flex flex-col items-center">
+    <DogEar sleep body={false} ribbon={false} seed={title?.length || 9} className="w-28 mb-4" />
+    <p className="font-display text-[clamp(2rem,4vw,3rem)] mb-2">{title}</p>
+    {children && <div className="caps leading-snug max-w-md mx-auto">{children}</div>}
   </div>
 );
 
 export const ErrorBox = ({ children }) =>
   children ? (
-    <div className="flex items-start gap-3 border-l-2 border-accent-red bg-accent-red/8 px-4 py-3 text-[13px] mb-4">
-      <span className="label !text-accent-red pt-px">Error</span>
+    <div className="flex items-start gap-3 rounded-[20px] bg-red text-[#FBFBF4] px-5 py-3 text-[13px] mb-4">
+      <span className="caps pt-px">Woof!</span>
       <span>{children}</span>
     </div>
   ) : null;
 
 export const Tabs = ({ tabs, active, onChange }) => (
-  <div className="flex flex-wrap gap-x-8 gap-y-2 mb-10 border-b border-border">
+  <div className="flex flex-wrap gap-2 mb-10">
     {tabs.map((t) => (
       <button
         key={t.id}
         onClick={() => onChange(t.id)}
         className={cn(
-          'relative pb-3 -mb-px font-wide text-[12px] transition-colors',
-          active === t.id ? 'text-text-main' : 'text-text-muted hover:text-text-main'
+          'relative h-11 px-5 rounded-full font-display text-[20px] transition-colors',
+          active === t.id ? 'text-[#FBFBF4]' : 'text-text-main border-[1.5px] border-red/40 hover:border-red'
         )}
       >
-        {t.label}
-        {t.count !== undefined && <sup className="ml-1 font-main normal-case text-[10px]">{t.count}</sup>}
         {active === t.id && (
-          <motion.span layoutId="tab-underline" className="absolute left-0 right-0 bottom-0 h-px bg-text-main" transition={{ duration: 0.5, ease: EASE }} />
+          <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-full bg-red" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />
         )}
+        <span className="relative">{t.label}</span>
+        {t.count !== undefined && <sup className="relative ml-1 font-main text-[10px]">{t.count}</sup>}
       </button>
     ))}
   </div>
@@ -191,16 +210,13 @@ export const Modal = ({ open, onClose, title, children, wide }) => {
             exit={{ y: 40, opacity: 0 }}
             transition={{ duration: 0.7, ease: EASE }}
             className={cn(
-              'bg-bg-base text-text-main w-full max-h-[92vh] overflow-y-auto rounded-t-[14px] sm:rounded-[10px] shadow-brutal-lg',
+              'bg-bg-base text-text-main w-full max-h-[92vh] overflow-y-auto rounded-t-[32px] sm:rounded-[32px] shadow-brutal-lg',
               wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'
             )}
           >
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border sticky top-0 z-10 bg-bg-base">
-              <div>
-                <span className="label block mb-1">BookLog</span>
-                <h3 className="font-wide font-medium text-[15px] truncate pr-4">{title}</h3>
-              </div>
-              <button onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-text-main hover:text-bg-base transition-colors">
+            <div className="flex items-center justify-between px-6 pt-6 pb-3 sticky top-0 z-10 bg-bg-base">
+              <h3 className="font-display text-[clamp(1.8rem,3vw,2.4rem)] truncate pr-4">{title}</h3>
+              <button onClick={onClose} aria-label="Close" className="w-10 h-10 rounded-full border-[1.5px] border-red flex items-center justify-center hover:bg-red hover:text-[#FBFBF4] transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -265,11 +281,11 @@ export const StarInput = ({ value, onChange }) => {
 // Form fields: hairline boxes
 // ---------------------------------------------------------------------
 const fieldClass =
-  'w-full px-4 py-3 bg-surface-white border border-border rounded-[6px] text-[14px] placeholder:text-text-muted focus:outline-none focus:border-text-main transition-colors';
+  'w-full px-5 py-3 bg-surface-white border-[1.5px] border-red/25 rounded-[22px] text-[14px] placeholder:text-text-muted focus:outline-none focus:border-red transition-colors';
 
 export const Field = ({ label, hint, children }) => (
   <label className="block mb-5">
-    <span className="label block mb-2">{label}</span>
+    <span className="caps block mb-2">{label}</span>
     {children}
     {hint && <span className="block text-[12px] text-text-muted mt-1.5">{hint}</span>}
   </label>
@@ -286,8 +302,8 @@ export const Select = ({ children, ...props }) => (
 
 export const Toggle = ({ checked, onChange, label }) => (
   <label className="flex items-center gap-3 cursor-pointer select-none text-[14px]">
-    <span className={cn('relative w-10 h-6 rounded-full border transition-colors', checked ? 'bg-text-main border-text-main' : 'border-border bg-surface-white')}>
-      <span className={cn('absolute top-[3px] w-4 h-4 rounded-full transition-all duration-300', checked ? 'left-[19px] bg-bg-base' : 'left-[3px] bg-text-muted')} />
+    <span className={cn('relative w-10 h-6 rounded-full border transition-colors', checked ? 'bg-red border-red' : 'border-red/30 bg-surface-white')}>
+      <span className={cn('absolute top-[3px] w-4 h-4 rounded-full transition-all duration-300', checked ? 'left-[19px] bg-[#FBFBF4]' : 'left-[3px] bg-red/50')} />
     </span>
     <input type="checkbox" className="sr-only" checked={!!checked} onChange={(e) => onChange(e.target.checked)} />
     {label}
@@ -297,12 +313,12 @@ export const Toggle = ({ checked, onChange, label }) => (
 // ---------------------------------------------------------------------
 // People
 // ---------------------------------------------------------------------
-const AVATAR_TONES = ['#D8322B', '#2F5D50', '#2B1B14', '#7A6A55', '#3E5A7A'];
+const AVATAR_TONES = ['#E33529', '#2B6786', '#C42B20', '#D96A8E', '#5A8FB3'];
 
 export const Avatar = ({ username = '?', size = 'w-10 h-10 text-lg' }) => {
   const tone = AVATAR_TONES[[...username].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
   return (
-    <span className={cn('inline-flex items-center justify-center rounded-full font-serif italic text-white uppercase flex-shrink-0', size)} style={{ background: tone }}>
+    <span className={cn('inline-flex items-center justify-center rounded-full font-display text-white uppercase flex-shrink-0', size)} style={{ background: tone }}>
       {username[0]}
     </span>
   );
@@ -333,7 +349,7 @@ export const CoverImage = ({ book, className, eager }) => {
   if (!book.thumbnail || failed) {
     return (
       <span className={cn('w-full h-full flex flex-col justify-between p-3 bg-text-main text-bg-base', className)}>
-        <span className="font-serif italic text-[clamp(12px,1.4vw,20px)] leading-tight line-clamp-4">{book.title}</span>
+        <span className="font-serif text-[clamp(12px,1.4vw,20px)] leading-tight line-clamp-4">{book.title}</span>
         <span className="text-[9px] uppercase tracking-wider opacity-60 line-clamp-1">{book.authors?.[0]}</span>
       </span>
     );

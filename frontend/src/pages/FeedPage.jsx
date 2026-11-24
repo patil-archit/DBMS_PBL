@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ListPlus } from 'lucide-react';
-import NeoButton from '../components/NeoButton';
 import { Avatar, Cover, Empty, Page, PageTitle, Spinner, Stars, UserLink, timeAgo } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { getFeed } from '../services/api';
+import SignInGate from '../components/SignInGate';
 
 const FeedPage = () => {
-  const { currentUser, loginWithGoogle, loading: authLoading } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const [items, setItems] = useState(null);
 
   useEffect(() => {
@@ -16,18 +16,13 @@ const FeedPage = () => {
 
   if (authLoading) return <Spinner />;
   if (!currentUser) {
-    return (
-      <Page className="text-center">
-        <PageTitle kicker="( Feed ) people you follow">Activity</PageTitle>
-        <NeoButton onClick={loginWithGoogle} variant="primary">Sign in to see what people you follow are reading</NeoButton>
-      </Page>
-    );
+    return <SignInGate animal="dog" title="Activity" text="See what the people you follow are reading, rating and reviewing." button="Sign in to see your feed" prop="cap" seed={31} />;
   }
   if (!items) return <Spinner label="Loading feed…" />;
 
   return (
     <Page className="max-w-3xl">
-      <PageTitle kicker="( Feed ) what people you follow logged, rated and listed">Activity</PageTitle>
+      <PageTitle animal="dog" kicker="( Feed ) what people you follow logged, rated and listed">Activity</PageTitle>
       {items.length === 0 ? (
         <Empty title="Quiet in here">
           Follow some readers on the <Link to="/people" className="underline font-medium">People</Link> page to see what they log, rate and list.

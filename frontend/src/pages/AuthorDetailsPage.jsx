@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Plus } from 'lucide-react';
 import BookCard from '../components/BookCard';
 import NeoButton from '../components/NeoButton';
 import { CountUp, EASE, FadeIn, RevealText, SectionTitle, Spinner } from '../components/ui';
+import { DogEar } from '../components/Dogs';
 import { followAuthor, getAuthor, unfollowAuthor } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -44,7 +45,7 @@ const AuthorDetailsPage = () => {
   if (error || !author) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-        <p className="font-serif italic text-5xl mb-8">{error}</p>
+        <p className="font-serif text-5xl mb-8">{error}</p>
         <NeoButton onClick={() => navigate('/search')}>Back to search</NeoButton>
       </div>
     );
@@ -64,12 +65,12 @@ const AuthorDetailsPage = () => {
       </div>
 
       <section className="grid grid-cols-12 gap-6 lg:gap-10 mb-24 items-end">
-        <div className="col-span-12 md:col-span-4">
+        <div className="col-span-12 md:col-span-4 relative max-w-[380px]">
           <motion.div
             initial={{ clipPath: 'inset(100% 0 0 0)' }}
             animate={{ clipPath: 'inset(0% 0 0 0)' }}
             transition={{ duration: 1.2, ease: EASE }}
-            className="aspect-[4/5] rounded-[4px] overflow-hidden bg-text-main max-w-[380px]"
+            className="aspect-square rounded-full overflow-hidden bg-red"
           >
             {author.image_url && !imgError ? (
               <motion.img
@@ -82,14 +83,17 @@ const AuthorDetailsPage = () => {
                 className="w-full h-full object-cover grayscale hover:grayscale-0 transition-[filter] duration-700"
               />
             ) : (
-              <span className="w-full h-full flex items-center justify-center font-serif italic text-[10rem] text-bg-base">{author.name[0]}</span>
+              <span className="w-full h-full flex items-center justify-center font-display text-[10rem] text-[#FBFBF4]">{author.name[0]}</span>
             )}
+          </motion.div>
+          <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, ease: EASE, delay: 0.6 }} className="absolute right-0 sm:-right-6 -bottom-6 w-28 sm:w-36">
+            <DogEar animal="owl" seed={author.name.length} body={false} ribbon={false} cover="#E33529" />
           </motion.div>
         </div>
         <div className="col-span-12 md:col-span-8">
-          <RevealText as="h1" delay={0.2} className="font-wide font-medium text-[clamp(2.6rem,8vw,8rem)] leading-[0.9] tracking-[-0.03em]">
+          <RevealText as="h1" delay={0.2} className="font-display text-[clamp(3.6rem,9vw,9rem)]">
             <span>{first}</span>
-            {rest.length > 0 && <span className="font-serif italic normal-case tracking-[-0.01em] text-accent-red">{rest.join(' ')}</span>}
+            {rest.length > 0 && <span className="text-red-deep">{rest.join(' ')}</span>}
           </RevealText>
           <div className="flex flex-wrap items-center gap-3 mt-8">
             <NeoButton onClick={toggleFollow} disabled={busy} variant={author.is_followed ? 'secondary' : 'primary'}>
@@ -103,20 +107,20 @@ const AuthorDetailsPage = () => {
 
       <div className="grid grid-cols-12 gap-6 lg:gap-10 mb-24">
         <FadeIn className="col-span-12 lg:col-span-7">
-          <p className="label mb-4">Biography</p>
-          <p className={`font-serif text-[clamp(1.3rem,2.2vw,1.9rem)] leading-[1.3] ${more ? '' : 'line-clamp-[8]'}`}>{bio}</p>
+          <p className="caps mb-4">Biography</p>
+          <p className={`text-[clamp(1.05rem,1.4vw,1.3rem)] leading-[1.55] ${more ? '' : 'line-clamp-[8]'}`}>{bio}</p>
           {bio.length > 500 && <button onClick={() => setMore(!more)} className="label !text-text-main link-under mt-4">{more ? 'Show less' : 'Read more'}</button>}
         </FadeIn>
-        <div className="col-span-12 lg:col-span-4 lg:col-start-9 grid grid-cols-2 gap-x-6 gap-y-10 content-start">
+        <div className="col-span-12 lg:col-span-4 lg:col-start-9 grid grid-cols-2 gap-3 content-start">
           {[
             ['Books', s.total_books],
             ['Avg rating', null, Number(s.avg_rating || 0).toFixed(2)],
             ['Ratings', s.total_ratings],
             ['Pages', s.total_pages],
           ].map(([k, v, text]) => (
-            <FadeIn key={k}>
-              <p className="display-num text-[clamp(2.4rem,4vw,4rem)] tabular-nums">{text ?? <CountUp value={Number(v) || 0} />}</p>
-              <p className="label mt-2">{k}</p>
+            <FadeIn key={k} className="min-w-0 rounded-[28px] bg-surface-white p-5">
+              <p className="font-display text-[clamp(1.8rem,2.6vw,2.8rem)] tabular-nums break-all">{text ?? <CountUp value={Number(v) || 0} format={(n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${Math.round(n / 1e3)}K` : n.toLocaleString())} />}</p>
+              <p className="caps mt-2">{k}</p>
             </FadeIn>
           ))}
         </div>
@@ -127,7 +131,7 @@ const AuthorDetailsPage = () => {
           <SectionTitle mark="( Writes in )">Genres</SectionTitle>
           <div className="flex flex-wrap gap-2 mt-6">
             {author.genres.map((g) => (
-              <Link key={g} to={`/explore?genre=${encodeURIComponent(g)}`} className="h-10 px-4 rounded-full border border-border text-[14px] inline-flex items-center hover:bg-text-main hover:text-bg-base transition-colors">{g}</Link>
+              <Link key={g} to={`/explore?genre=${encodeURIComponent(g)}`} className="chip h-10 px-4 rounded-full border-2 border-border text-[17px] leading-none inline-flex items-center hover:bg-red hover:border-red hover:text-[#FBFBF4] transition-colors">{g}</Link>
             ))}
           </div>
         </section>

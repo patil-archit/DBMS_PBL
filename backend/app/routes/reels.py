@@ -1,4 +1,4 @@
-"""Reels feed and follower-only takes."""
+"""Flips feed (one book per screen) and public takes."""
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -16,9 +16,10 @@ class TakeIn(BaseModel):
     vibe: Optional[str] = None
 
 
-@router.get("/reels")
-def reels(
-    mode: Literal["for_you", "following"] = "for_you",
+@router.get("/flips")
+@router.get("/reels", include_in_schema=False)  # old name, kept so links still work
+def flips(
+    mode: Literal["for_you", "latest", "following"] = "for_you",
     genre: Optional[str] = None,
     limit: int = Query(8, ge=1, le=20),
     viewer: Optional[Viewer] = Depends(viewer_optional),

@@ -236,22 +236,33 @@ with TestClient(app) as c:
     check(any(j["username"] == bob for j in jr) and all(j["username"] != cara for j in jr),
           "journal shows public reviews and hides private diaries (RLS)")
 
-    # ---- reels & follower-only takes (MongoDB + follow graph) -------------
-    fy = c.get("/reels", params={"limit": 5}).json()
-    check(len(fy) == 5 and all(r["book"]["thumbnail"] and r["takes"] == [] for r in fy), "reels feed for anonymous readers, no takes")
+    # ---- flips & public takes (MongoDB + follow graph for private accounts) --
+    fy = c.get("/flips", params={"limit": 5}).json()
+    check(len(fy) == 5 and all(r["book"]["thumbnail"] and isinstance(r["takes"], list) for r in fy), "flips feed for anonymous readers")
+    check(len(c.get("/reels", params={"limit": 2}).json()) == 2, "old /reels path still works")
+    pub = c.post("/takes", json={"book_id": bid, "text": "Everyone can read this one", "vibe": "must_read"}, headers=as_(B))
+    pid = pub.json()["take_id"]
+    check(pid in [t["take_id"] for t in c.get(f"/books/{bid}/takes").json()], "a public account's take is seen by anonymous readers")
+    seen_a = c.get(f"/books/{bid}/takes", headers=as_(A)).json()
+    check(any(t["take_id"] == pid and t["username"] == bob for t in seen_a), "everyone sees who said what")
+    check(c.post(f"/takes/{pid}/like", headers=as_(A)).json() == {"liked": True, "likes": 1}, "anyone signed in can like a public take")
+    lat = c.get("/flips", params={"mode": "latest"}).json()
+    check(lat and lat[0]["book"]["book_id"] == bid, "latest flips show the book just talked about")
+    check(c.delete(f"/takes/{pid}", headers=as_(B)).status_code == 204, "delete own public take")
+    # Cara is a private account here: her takes stay with her followers
     tk = c.post("/takes", json={"book_id": bid, "text": "Fun fact: written in a shed", "vibe": "fun_fact"}, headers=as_(C))
     check(tk.status_code == 201 and tk.json()["mine"], "post a take")
     tid = tk.json()["take_id"]
     check(c.post("/takes", json={"book_id": bid, "text": "x", "vibe": "nope"}, headers=as_(C)).status_code == 422, "unknown vibe rejected")
     check(c.post("/takes", json={"book_id": bid, "text": "hi"}).status_code == 401, "posting needs sign-in")
     seen_b = c.get(f"/books/{bid}/takes", headers=as_(B)).json()   # Bob follows Cara
-    check([t["take_id"] for t in seen_b] == [tid], "followers see the take")
-    check(c.get(f"/books/{bid}/takes", headers=as_(A)).json() == [], "non-followers don't see the take")
-    check(c.get(f"/books/{bid}/takes").json() == [], "anonymous readers don't see the take")
-    fol = c.get("/reels", params={"mode": "following"}, headers=as_(B)).json()
-    check(fol and fol[0]["book"]["book_id"] == bid and fol[0]["takes"][0]["take_id"] == tid, "following reels show books with takes")
+    check([t["take_id"] for t in seen_b] == [tid], "followers see a private account's take")
+    check(c.get(f"/books/{bid}/takes", headers=as_(A)).json() == [], "non-followers don't see a private account's take")
+    check(c.get(f"/books/{bid}/takes").json() == [], "anonymous readers don't see a private account's take")
+    fol = c.get("/flips", params={"mode": "following"}, headers=as_(B)).json()
+    check(fol and fol[0]["book"]["book_id"] == bid and fol[0]["takes"][0]["take_id"] == tid, "following flips show books with takes")
     check(c.post(f"/takes/{tid}/like", headers=as_(B)).json() == {"liked": True, "likes": 1}, "followers can like a take")
-    check(c.post(f"/takes/{tid}/like", headers=as_(A)).status_code == 404, "non-followers can't like a hidden take")
+    check(c.post(f"/takes/{tid}/like", headers=as_(A)).status_code == 404, "non-followers can't like a private account's take")
     check(c.delete(f"/takes/{tid}", headers=as_(B)).status_code == 403, "can't delete someone else's take")
     c.post("/takes", json={"book_id": bid, "text": "Second take"}, headers=as_(C))
     check(c.delete(f"/takes/{tid}", headers=as_(C)).status_code == 204, "delete own take")

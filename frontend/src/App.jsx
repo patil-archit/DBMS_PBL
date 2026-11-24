@@ -1,8 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Navbar, { NAV } from './components/Navbar';
 import Footer from './components/Footer';
-import { CommandPalette, Cursor, Intro, PageTransition, SmoothScroll } from './components/shell';
+import { CommandPalette, Intro, PageTransition, SmoothScroll } from './components/shell';
 import { OnboardingGate } from './components/GenrePicker';
 import HomePage from './pages/HomePage';
 import LandingPage from './pages/LandingPage';
@@ -25,21 +25,29 @@ const StatsPage = lazy(() => import('./pages/StatsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
-const ReelsPage = lazy(() => import('./pages/ReelsPage'));
+const FlipsPage = lazy(() => import('./pages/FlipsPage'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage'));
 const QuizPage = lazy(() => import('./pages/QuizPage'));
 
+// Each page gets its own paper colour (palettes live in index.css)
+const PAGE_COLOURS = [
+  ['/explore', 'sky'], ['/flips', 'steel'], ['/lists', 'pink'], ['/quiz', 'lime'],
+  ['/search', 'blush'], ['/author', 'rose'], ['/library', 'pink'], ['/feed', 'sky'],
+  ['/people', 'lime'], ['/messages', 'blush'], ['/chat', 'sky'], ['/u/', 'rose'],
+];
+const pageColour = (path) => (PAGE_COLOURS.find(([p]) => path.startsWith(p)) || [null, 'cream'])[1];
+
 function Shell() {
   const { pathname } = useLocation();
+  useEffect(() => { document.documentElement.dataset.page = pageColour(pathname); }, [pathname]);
   // The landing page is a full-screen cover with its own intro
-  if (pathname === '/') return <><Cursor /><LandingPage /></>;
+  if (pathname === '/') return <LandingPage />;
   return (
     <>
       <SmoothScroll />
       <Intro />
-      <Cursor />
       <CommandPalette links={NAV} />
-      <div className="grain min-h-screen flex flex-col bg-bg-base font-main text-text-main">
+      <div className="min-h-screen flex flex-col bg-bg-base font-main text-text-main">
         <Navbar />
         <OnboardingGate />
 
@@ -49,8 +57,9 @@ function Shell() {
             <Routes>
               <Route path="/home" element={<HomePage />} />
               <Route path="/explore" element={<ExplorePage />} />
-              <Route path="/reels" element={<ReelsPage />} />
-              <Route path="/shuffle" element={<Navigate to="/reels" replace />} />
+              <Route path="/flips" element={<FlipsPage />} />
+              <Route path="/reels" element={<Navigate to="/flips" replace />} />
+              <Route path="/shuffle" element={<Navigate to="/flips" replace />} />
               <Route path="/quiz" element={<QuizPage />} />
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/messages/:username" element={<MessagesPage />} />

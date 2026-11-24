@@ -31,7 +31,7 @@ const BookCard = ({ book, showScore = false, colorScheme, source, index, classNa
     <Link
       to={`/book/${encodeURIComponent(book.title)}`}
       className={cn('group block', className)}
-      data-cursor="Open"
+     
       onClick={() => book.book_id && source && logClick(book.book_id, source)}
     >
       <div className="[perspective:900px]">
@@ -40,7 +40,7 @@ const BookCard = ({ book, showScore = false, colorScheme, source, index, classNa
           onMouseMove={onMove}
           onMouseLeave={reset}
           style={{ rotateX: rx, rotateY: ry, transformStyle: 'preserve-3d' }}
-          className="relative aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover bg-surface-white transition-shadow duration-500 group-hover:shadow-[0_40px_60px_-25px_rgba(0,0,0,0.55)]"
+          className="relative aspect-[2/3] rounded-r-[5px] rounded-l-[2px] overflow-hidden shadow-cover bg-surface-white transition-shadow duration-500 group-hover:shadow-[0_40px_60px_-25px_rgba(120,20,12,0.55)]"
         >
           <CoverImage book={book} className="transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]" />
           {/* spine shading */}
@@ -56,19 +56,19 @@ const BookCard = ({ book, showScore = false, colorScheme, source, index, classNa
 
       <div className="pt-3.5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[13px] leading-[1.25] font-medium line-clamp-2" title={book.title}>
-            {index !== undefined && <span className="label mr-1.5">{String(index + 1).padStart(2, '0')}</span>}
+          <h3 className="font-display text-[22px] leading-[0.95] line-clamp-2" title={book.title}>
+            {index !== undefined && <span className="mr-1.5 opacity-60">{String(index + 1).padStart(2, '0')}</span>}
             {book.title}
           </h3>
           {book.average_rating ? (
-            <span className="label !text-text-main whitespace-nowrap tabular-nums">★ {Number(book.average_rating).toFixed(1)}</span>
+            <span className="caps whitespace-nowrap tabular-nums pt-0.5">★ {Number(book.average_rating).toFixed(1)}</span>
           ) : null}
         </div>
-        <p className="label mt-1 line-clamp-1">{book.authors?.length ? book.authors.join(', ') : 'Unknown author'}</p>
+        <p className="caps opacity-75 mt-1 line-clamp-1">{book.authors?.length ? book.authors.join(', ') : 'Unknown author'}</p>
         {book.reason && (
-          <div className="mt-3 rounded-[8px] bg-accent-red/[0.08] px-3 py-2.5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-accent-red">Why this pick</p>
-            <p className="text-[12.5px] leading-[1.45] mt-1 text-text-main/90">{book.reason}</p>
+          <div className="mt-3 rounded-[18px] bg-blush px-4 py-3">
+            <p className="caps text-[10px]">Why this pick</p>
+            <p className="text-[12.5px] leading-[1.45] mt-1">{book.reason}</p>
           </div>
         )}
       </div>

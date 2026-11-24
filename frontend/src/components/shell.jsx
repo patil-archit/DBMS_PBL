@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion';
 import Lenis from 'lenis';
 import { ArrowRight, CornerDownLeft, Search as SearchIcon } from 'lucide-react';
-import { LogoMark } from './Logo';
+import { Runner } from './Dogs';
 import { CoverImage, EASE } from './ui';
 import { cn } from './NeoButton';
 import { getRandomBook, searchBooks } from '../services/api';
@@ -17,7 +17,7 @@ const readTheme = () => document.documentElement.dataset.theme || 'light';
 export const setTheme = (t) => {
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('booklog-theme', t); } catch { /* private mode */ }
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#1F140F' : '#F3E3D3');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#1F1110' : '#F3F3E9');
   themeListeners.forEach((l) => l());
 };
 export const useTheme = () => {
@@ -102,7 +102,7 @@ export const Cursor = () => {
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.6 }}
-            className="font-wide text-[10px] font-semibold"
+            className="caps text-[10px] font-semibold"
           >
             {label}
           </motion.span>
@@ -127,12 +127,12 @@ export const Intro = () => {
     let raf;
     const start = performance.now();
     const tick = (t) => {
-      const p = Math.min(1, (t - start) / 1900);
+      const p = Math.min(1, (t - start) / 1600);
       setPct(Math.round(100 * (1 - Math.pow(1 - p, 3))));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    const done = setTimeout(() => setShow(false), 2500);
+    const done = setTimeout(() => setShow(false), 2000);
     return () => { cancelAnimationFrame(raf); clearTimeout(done); };
   }, [show]);
 
@@ -140,41 +140,16 @@ export const Intro = () => {
     <AnimatePresence>
       {show && (
         <motion.div
-          className="fixed inset-0 z-[400] bg-[#EDD1BD] text-[#2B1B14] overflow-hidden"
-          exit={{ clipPath: 'inset(0 0 0 100%)' }}
-          initial={{ clipPath: 'inset(0 0 0 0%)' }}
-          transition={{ duration: 1.1, ease: [0.76, 0, 0.24, 1] }}
+          className="fixed inset-0 z-[400] bg-bg-base text-red overflow-hidden flex flex-col items-center justify-center"
+          exit={{ y: '-100%' }}
+          transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex items-end gap-[2vw]">
-              <LogoMark animate className="w-[11vw] max-w-[150px] min-w-[70px] h-auto" />
-              <div className="font-serif text-[#D8322B] leading-[0.8] text-[clamp(4rem,17vw,15rem)]">
-                {['Book', 'Log'].map((w, i) => (
-                  <span key={w} className="block overflow-hidden">
-                    <motion.span
-                      className="block"
-                      initial={{ y: '100%' }}
-                      animate={{ y: '0%' }}
-                      transition={{ duration: 1.2, ease: EASE, delay: 0.25 + i * 0.12 }}
-                    >
-                      {w}
-                    </motion.span>
-                  </span>
-                ))}
-              </div>
-            </div>
+          <p className="font-display text-[clamp(5rem,22vw,20rem)]">{String(pct).padStart(2, '0')}%</p>
+          <div className="relative w-[min(70vw,560px)] h-px bg-red/30 mt-4">
+            <span className="absolute left-0 top-0 h-px bg-red" style={{ width: `${pct}%` }} />
+            <span className="absolute -top-[46px] -translate-x-1/2" style={{ left: `${pct}%` }}><Runner className="w-20 text-red" /></span>
           </div>
-          <div className="absolute left-5 right-5 bottom-5 flex items-end justify-between text-[11px] font-medium">
-            <span>A social book diary<br />PostgreSQL · Neo4j · MongoDB</span>
-            <span className="display-num text-[clamp(3rem,9vw,8rem)] tabular-nums">{String(pct).padStart(3, '0')}</span>
-          </div>
-          {/* the black panel that pushes in just before the wipe */}
-          <motion.div
-            className="absolute inset-y-0 right-0 bg-[#2B1B14]"
-            initial={{ width: '0%' }}
-            animate={{ width: ['0%', '0%', '100%'] }}
-            transition={{ duration: 2.5, times: [0, 0.72, 1], ease: [0.76, 0, 0.24, 1] }}
-          />
+          <p className="caps mt-6">Fetching your books…</p>
         </motion.div>
       )}
     </AnimatePresence>
@@ -347,7 +322,7 @@ export const CommandPalette = ({ links = [] }) => {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -10, opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="w-full max-w-2xl bg-bg-base text-text-main rounded-[12px] shadow-brutal-lg overflow-hidden"
+            className="w-full max-w-2xl bg-bg-base text-text-main rounded-[28px] border-2 border-red shadow-brutal-lg overflow-hidden"
             role="dialog"
             aria-label="Command palette"
           >
@@ -382,7 +357,7 @@ export const CommandPalette = ({ links = [] }) => {
                       {item.book ? (
                         <span className="w-7 h-10 rounded-[2px] overflow-hidden flex-shrink-0 bg-surface-white"><CoverImage book={item.book} eager /></span>
                       ) : (
-                        <ArrowRight className={cn('w-3.5 h-3.5 flex-shrink-0', active === i ? 'text-accent-red' : 'text-text-muted')} />
+                        <ArrowRight className={cn('w-3.5 h-3.5 flex-shrink-0', active === i ? 'text-bg-base' : 'text-text-muted')} />
                       )}
                       <span className="flex-1 min-w-0 truncate text-[14px]">{item.label}</span>
                       <span className={cn('text-[11px] truncate max-w-[40%]', active === i ? 'opacity-70' : 'text-text-muted')}>{item.hint}</span>

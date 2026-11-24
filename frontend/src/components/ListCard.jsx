@@ -7,8 +7,8 @@ const ListCard = ({ list }) => {
   const covers = (list.covers || []).slice(0, 4);
   return (
     <Link to={`/lists/${list.list_id}`} data-cursor="Open" className="group block">
-      <div className="relative h-56 rounded-[6px] bg-surface-white overflow-hidden flex items-end justify-center pb-0">
-        {covers.length === 0 && <span className="absolute inset-0 flex items-center justify-center font-serif italic text-3xl text-text-muted">Empty list</span>}
+      <div className="relative h-56 rounded-[28px] bg-surface-white overflow-hidden flex items-end justify-center pb-0">
+        {covers.length === 0 && <span className="absolute inset-0 flex items-center justify-center font-serif text-3xl text-text-muted">Empty list</span>}
         {covers.map((c, i) => {
           const mid = (covers.length - 1) / 2;
           const off = i - mid;
@@ -32,9 +32,9 @@ const ListCard = ({ list }) => {
       </div>
       <div className="pt-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-wide font-medium text-[14px] leading-tight flex items-center gap-2">
+          <h3 className="font-display text-[28px] flex items-center gap-2">
             {!list.is_public && <Lock className="w-3.5 h-3.5 flex-shrink-0" aria-label="Private" />}
-            <span className="line-clamp-2 group-hover:text-accent-red transition-colors">{list.name}</span>
+            <span className="line-clamp-2 group-hover:text-red-deep transition-colors">{list.name}</span>
           </h3>
           <p className="label mt-1">@{list.username} · {list.book_count} book{list.book_count === 1 ? '' : 's'}</p>
         </div>

@@ -1,542 +1,526 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useScroll, useSpring, useTransform } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, BookOpen, MessageCircle, PenLine, Search, Users } from 'lucide-react';
+import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
+import {
+  ArrowRight, ArrowUpRight, Compass, Film, Heart, ListOrdered, MessageCircle, Search, Sparkles, Trophy,
+} from 'lucide-react';
 import BookCard from '../components/BookCard';
-import GoalWidget from '../components/GoalWidget';
 import { cn } from '../components/NeoButton';
-import { Avatar, CountUp, CoverImage, EASE, FadeIn, timeAgo } from '../components/ui';
-import { OnlineDot } from '../components/social';
-import { Stage, StageMobile, VelocityRow, bookPath, pad, useIsDesktop } from '../components/Stage';
+import { Avatar, CountUp, CoverImage, EASE, timeAgo } from '../components/ui';
+import { Book3D, DogEar, PageBall, Paw } from '../components/Dogs';
+import { OnlineDot, ShareToFriend } from '../components/social';
+import { openPalette } from '../components/shell';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  browseBooks, browseLists, getBookOfTheDay, getCatalogueStats, getFeaturedAuthors, getGenreIndex, getJournal,
-  getPersonalizedRecommendations, getRandomBook, getReadingNow, getTrending,
+  browseBooks, getBookOfTheDay, getCatalogueStats, getFeaturedAuthors, getGoal, getPersonalizedRecommendations,
+  getReadingNow, setGoal,
 } from '../services/api';
 
-/** Pill button + round arrow, the site's signature call to action. */
-export const PillCTA = ({ to, onClick, children, tone = 'light', arrow = 'dark' }) => {
-  const inner = (
-    <span className="group inline-flex items-center gap-1.5">
-      <span className={cn('h-12 px-6 rounded-full inline-flex items-center text-[14px] font-medium transition-colors duration-300',
-        tone === 'light' ? 'bg-cream text-espresso group-hover:bg-latte' : tone === 'latte' ? 'bg-latte text-espresso group-hover:bg-sand' : 'bg-espresso text-latte group-hover:bg-cocoa')}
-      >{children}</span>
-      <span className={cn('w-12 h-12 rounded-full inline-flex items-center justify-center overflow-hidden relative transition-transform duration-500 group-hover:rotate-[-45deg]',
-        arrow === 'dark' ? 'bg-espresso text-latte' : arrow === 'mustard' ? 'bg-mustard text-espresso' : arrow === 'red' ? 'bg-accent-red text-white' : 'bg-cream text-espresso')}
-      >
-        <ArrowRight className="w-4 h-4" />
-      </span>
-    </span>
+export const bookPath = (b) => `/book/${encodeURIComponent(b.title)}`;
+const pad = (n) => String(n).padStart(2, '0');
+
+/** Red pill, the one button style the site uses. */
+export const Pill = ({ to, onClick, children, tone = 'red', className, ...props }) => {
+  const cls = cn(
+    'group inline-flex items-center gap-2 h-12 px-7 rounded-full whitespace-nowrap font-display text-[22px] leading-none transition-[transform,background-color,color] duration-500 hover:-rotate-3 hover:scale-[1.04]',
+    tone === 'red' && 'bg-red text-[#FBFBF4] hover:bg-red-deep',
+    tone === 'cream' && 'bg-[#FBFBF4] text-red',
+    tone === 'steel' && 'bg-steel text-[#FBFBF4]',
+    tone === 'line' && 'border-[1.5px] border-red text-red hover:bg-red hover:text-[#FBFBF4]',
+    className,
   );
-  return to ? <Link to={to}>{inner}</Link> : <button onClick={onClick}>{inner}</button>;
+  const inner = <>{children}<ArrowRight className="w-4 h-4 transition-transform duration-500 group-hover:translate-x-1" /></>;
+  return to ? <Link to={to} className={cls} {...props}>{inner}</Link> : <button onClick={onClick} className={cls} {...props}>{inner}</button>;
+};
+
+/** Words that rise from behind a mask when scrolled into view. */
+// The mask is observed (not the hidden text inside it, which never intersects).
+export const Rise = ({ children, className, delay = 0 }) => (
+  <motion.span className={cn('block overflow-hidden pt-[0.05em]', className)} initial="hide" whileInView="show" viewport={{ once: true, margin: '0px 0px -8% 0px' }}>
+    <motion.span className="block" variants={{ hide: { y: '105%' }, show: { y: 0 } }} transition={{ duration: 1, ease: EASE, delay }}>
+      {children}
+    </motion.span>
+  </motion.span>
+);
+
+// =====================================================================
+// 1. HERO: two halves of a sentence and a dog-eared book between them
+// =====================================================================
+const Hero = ({ stats }) => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
+  const dogY = useTransform(scrollYProgress, [0, 1], ['0%', '22%']);
+  const dogScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+  const leftX = useTransform(scrollYProgress, [0, 1], ['0%', '-18%']);
+  const rightX = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
+  return (
+    <section ref={ref} className="relative min-h-[100svh] pt-[96px] overflow-hidden flex flex-col">
+      <motion.p className="caps text-center text-[13px] sm:text-[15px]" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }}>
+        Your trusted social book diary!
+      </motion.p>
+
+      <div className="relative flex-1 grid content-start md:content-stretch md:grid-cols-2 gap-y-2 px-4 sm:px-8 mt-6 md:mt-10 pb-[90vw] md:pb-0">
+        <motion.h1 style={{ x: leftX }} className="font-display text-[16vw] md:text-[clamp(3.4rem,10.6vw,13rem)] whitespace-nowrap relative z-0">
+          <Rise className="w-max">A dog-eared</Rise>
+          <Rise className="w-max" delay={0.08}>book is</Rise>
+        </motion.h1>
+        <motion.div style={{ x: rightX }} className="md:text-right relative z-0">
+          <h1 className="font-display text-[16vw] md:text-[clamp(3.4rem,10.6vw,13rem)] whitespace-nowrap">
+            <Rise className="w-max md:ml-auto" delay={0.16}>a loved</Rise>
+            <Rise className="w-max md:ml-auto" delay={0.24}>book!</Rise>
+          </h1>
+          <motion.p className="caps max-w-[260px] md:ml-auto mt-4 leading-snug hidden md:block" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
+            {stats ? <><CountUp value={stats.books} /> books, <CountUp value={stats.authors} /> authors</> : 'Thousands of books'} and the readers who wear them out.
+          </motion.p>
+        </motion.div>
+
+        {/* the dog */}
+        <motion.div
+          style={{ y: dogY, scale: dogScale }}
+          className="absolute left-1/2 bottom-0 -translate-x-1/2 w-[min(80vw,600px)] z-10 origin-bottom"
+        >
+          <motion.div initial={{ y: '60%' }} animate={{ y: '6%' }} transition={{ duration: 1.4, ease: EASE, delay: 0.35 }}>
+            <DogEar animal="dog" seed={7} />
+          </motion.div>
+        </motion.div>
+
+        {/* round shortcuts, bottom left */}
+        <div className="absolute left-4 sm:left-8 bottom-10 z-20 hidden sm:flex gap-2.5">
+          {[[Compass, '/explore', 'Explore'], [Film, '/flips', 'Flips'], [Search, null, 'Search']].map(([Icon, to, label]) => {
+            const cls = 'w-12 h-12 rounded-full border-[1.5px] border-red text-red flex items-center justify-center hover:bg-red hover:text-[#FBFBF4] transition-colors';
+            return to
+              ? <Link key={label} to={to} aria-label={label} className={cls}><Icon className="w-5 h-5" /></Link>
+              : <button key={label} onClick={openPalette} aria-label={label} className={cls}><Icon className="w-5 h-5" /></button>;
+          })}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 // =====================================================================
-// HERO: full-bleed slides over a moving wall of covers
+// 2. ABOUT: a sentence floating in a cloud of page-balls
 // =====================================================================
-const WallColumn = ({ books, duration, reverse }) => (
-  <div className="overflow-hidden h-full">
-    <div className="flex flex-col gap-3" style={{ animation: `wall ${duration}s linear infinite${reverse ? ' reverse' : ''}` }}>
-      {[...books, ...books].map((b, i) => (
-        <div key={`${b.book_id}-${i}`} className="aspect-[2/3] rounded-[4px] overflow-hidden shrink-0"><CoverImage book={b} eager={i < 4} /></div>
-      ))}
-    </div>
-  </div>
-);
-
-const CoverWall = ({ books, cols = 8 }) => (
-  <div className="absolute inset-[-20%] [perspective:1400px]">
-    <div className="absolute inset-0 grid gap-3 [transform:rotateX(24deg)_rotateZ(-10deg)]" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
-      {Array.from({ length: cols }, (_, c) => (
-        <WallColumn key={c} books={books.filter((_, i) => i % cols === c)} duration={60 + (c % 3) * 15} reverse={c % 2 === 1} />
-      ))}
-    </div>
-  </div>
-);
-
-const SLIDES = [
-  { title: ['A diary for', 'every book.'], short: 'A diary for every book', sort: 'popular' },
-  { title: ['Twenty thousand', 'stories, one shelf.'], short: 'The catalogue', sort: 'rating' },
-  { title: ['Readers who', 'read like you.'], short: 'Readers like you', sort: 'newest' },
+const CLOUD = [
+  [-6, 4, 34], [14, -8, 26], [70, -6, 30], [88, 10, 26], [-4, 52, 30], [24, 60, 34], [52, 48, 38], [80, 56, 30], [36, 18, 18], [62, 22, 16],
 ];
 
-const Hero = ({ walls, today, stats }) => {
-  const [i, setI] = useState(0);
+const About = ({ stats }) => {
   const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '25%']);
-  useEffect(() => {
-    const id = setTimeout(() => setI((n) => (n + 1) % SLIDES.length), 7000);
-    return () => clearTimeout(id);
-  }, [i]);
-  const slide = SLIDES[i];
-  const wall = walls[i] || walls[0] || [];
-  const thumbs = walls.map((w) => w[3] || w[0]);
-
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const drift = useTransform(scrollYProgress, [0, 1], [80, -80]);
   return (
-    <section ref={ref} className="relative h-[100svh] min-h-[640px] overflow-hidden bg-roast text-latte">
-      <motion.div className="absolute inset-0" style={{ y }}>
-        <AnimatePresence initial={false}>
-          <motion.div
-            key={i}
-            className="absolute inset-0"
-            initial={{ opacity: 0, scale: 1.12 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ opacity: { duration: 1.4 }, scale: { duration: 8, ease: 'linear' } }}
-          >
-            {wall.length > 0 && <CoverWall books={wall} />}
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(26,16,12,0.62)_0%,rgba(26,16,12,0.45)_40%,rgba(26,16,12,0.94)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_80%,rgba(26,16,12,0.6),transparent_60%)]" />
-
-      {/* Right: stacked cards */}
-      <div className="absolute right-4 sm:right-6 top-[24%] hidden md:flex flex-col gap-3 w-[300px] lg:w-[340px]">
-        <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.9, duration: 1, ease: EASE }}>
-          <Link to="/explore" className="group flex items-center justify-between h-12 px-5 rounded-[14px] bg-espresso/70 backdrop-blur-xl text-[14px] hover:bg-espresso transition-colors">
-            Explore the catalogue <ArrowRight className="w-4 h-4 transition-transform duration-500 group-hover:translate-x-1" />
-          </Link>
-        </motion.div>
-        <div className="grid grid-cols-2 gap-3">
-          {today && (
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05, duration: 1, ease: EASE }}>
-              <Link to={bookPath(today)} className="group block rounded-[14px] bg-espresso/70 backdrop-blur-xl p-3 h-full hover:bg-espresso transition-colors">
-                <div className="aspect-[4/5] rounded-[8px] bg-cocoa flex items-center justify-center overflow-hidden">
-                  <div className="w-[62%] aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover transition-transform duration-700 group-hover:scale-110 group-hover:-rotate-3"><CoverImage book={today} eager /></div>
-                </div>
-                <p className="text-[12px] mt-2.5 leading-tight">Book of the day</p>
-              </Link>
+    <section ref={ref} className="relative overflow-hidden bg-[linear-gradient(180deg,var(--color-bg-base)_0%,var(--color-bg-base)_40%,var(--color-pink)_100%)] pt-24 pb-40 min-h-[110vh] flex items-center">
+      <div className="absolute inset-0 pointer-events-none">
+        {CLOUD.map(([x, y, w], i) => (
+          <motion.div key={i} className="absolute" style={{ left: `${x}%`, top: `${y}%`, width: `${w}vw`, y: i % 2 ? drift : 0 }}>
+            <motion.div initial={{ scale: 0.4, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.2, ease: EASE, delay: (i % 5) * 0.08 }}>
+              <PageBall seed={i + 3} className="w-full" />
             </motion.div>
-          )}
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2, duration: 1, ease: EASE }}>
-            <Link to="/reels" className="group block rounded-[14px] overflow-hidden relative h-full min-h-[190px]">
-              {wall[7] && <span className="absolute inset-0 scale-110 transition-transform duration-[1.5s] group-hover:scale-125"><CoverImage book={wall[7]} /></span>}
-              <span className="absolute inset-0 bg-gradient-to-t from-roast/90 via-roast/20 to-transparent" />
-              <span className="absolute left-3 bottom-3 text-[12px]">Book reels</span>
-              <span className="absolute right-3 top-3 w-8 h-8 rounded-full bg-cream/90 text-espresso flex items-center justify-center"><ArrowUpRight className="w-4 h-4" /></span>
+          </motion.div>
+        ))}
+      </div>
+      <div className="relative max-w-[1200px] mx-auto px-6 text-center">
+        <p className="font-display text-[clamp(1.9rem,3.7vw,3.6rem)] leading-[0.98] md:whitespace-nowrap">
+          <Rise>Here at BookLog we think the books</Rise>
+          <Rise delay={0.06}>you read are as much a part of you as,</Rise>
+          <Rise delay={0.12}>well, you are! So we keep every one:</Rise>
+          <Rise delay={0.18}>rated, reviewed, shared with friends.</Rise>
+        </p>
+        {stats && (
+          <div className="mt-14 flex flex-wrap justify-center gap-4">
+            {[['Books', stats.books], ['Authors', stats.authors], ['Genres', stats.genres], ['Pages', stats.pages]].map(([k, v], i) => (
+              <motion.div key={k} initial={{ scale: 0 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 160, damping: 14, delay: i * 0.1 }}
+                className="w-[132px] h-[132px] sm:w-[150px] sm:h-[150px] rounded-full bg-pink flex flex-col items-center justify-center">
+                <span className="font-display text-[clamp(1.8rem,3vw,2.6rem)] tabular-nums"><CountUp value={v} format={(n) => (n >= 100000 ? `${Math.round(n / 1000)}K` : n.toLocaleString())} /></span>
+                <span className="caps">{k}</span>
+              </motion.div>
+            ))}
+          </div>
+        )}
+        <div className="mt-10"><Pill to="/explore" tone="line">Open the catalogue</Pill></div>
+      </div>
+    </section>
+  );
+};
+
+// =====================================================================
+// 3. OUR SHELVES: every feature is a dog in the middle of a big circle
+// =====================================================================
+const SHELVES = [
+  { name: 'Explore', icon: Compass, to: '/explore', text: 'Every book on one shelf. Filter by genre, decade, length and rating.', dog: { animal: 'cat', prop: 'glasses' } },
+  { name: 'Flips', icon: Film, to: '/flips', text: 'Flip through books one screen at a time and see what everyone is saying about each one.', dog: { animal: 'fox', prop: 'cap' } },
+  { name: 'Lists', icon: ListOrdered, to: '/lists', text: 'Ranked lists made by readers. Make yours, reorder it, collect likes.', dog: { animal: 'bear', prop: 'crown' } },
+  { name: 'Quiz', icon: Trophy, to: '/quiz', text: 'Five questions and we know your reader profile, with books to match.', dog: { animal: 'owl' } },
+  { name: 'Messages', icon: MessageCircle, to: '/messages', text: 'Talk books with the people you follow. Send a book right in the chat.', dog: { animal: 'rabbit', prop: 'bow' } },
+  { name: 'Assistant', icon: Sparkles, to: '/chat', text: 'Ask for a book the way you’d ask a friend. It knows the whole catalogue.', dog: { animal: 'dog', prop: 'beret' } },
+];
+
+const Shelves = () => {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return undefined;
+    const id = setTimeout(() => setI((n) => (n + 1) % SHELVES.length), 5200);
+    return () => clearTimeout(id);
+  }, [i, paused]);
+  const s = SHELVES[i];
+  return (
+    <section className="relative bg-pink overflow-hidden pt-20 pb-24" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <h2 className="font-display text-center text-[clamp(4.4rem,16vw,15rem)] relative">
+        <Rise>Our shelves</Rise>
+        <motion.span className="absolute left-[35%] top-[8%] w-[4.5vw] min-w-[30px] aspect-square rounded-full bg-ball border-2 border-ink-line"
+          animate={{ y: [0, -40, 0], rotate: [0, 180, 360] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
+      </h2>
+
+      <div className="relative mt-6 h-[660px] sm:h-[min(110vw,760px)]">
+        {/* concentric circles */}
+        {[1, 0.72, 0.46].map((k, n) => (
+          <motion.div key={k} className="absolute left-1/2 top-[26%] sm:top-[8%] -translate-x-1/2 rounded-full"
+            style={{ width: `min(${k * 130}vw, ${k * 980}px)`, aspectRatio: 1, background: n === 2 ? 'var(--color-blush)' : 'rgba(251,251,244,0.22)' }}
+            initial={{ scale: 0.6, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.2, ease: EASE, delay: n * 0.12 }} />
+        ))}
+
+        {/* the dog for this shelf */}
+        <div className="absolute left-1/2 top-[34%] sm:top-[14%] -translate-x-1/2 w-[min(62vw,380px)]">
+          <AnimatePresence mode="wait">
+            <motion.div key={s.name} initial={{ y: 60, opacity: 0, rotate: -6 }} animate={{ y: 0, opacity: 1, rotate: 0 }} exit={{ y: -40, opacity: 0, rotate: 6 }} transition={{ duration: 0.6, ease: EASE }}>
+              <DogEar seed={11 + i * 7} animal={s.dog.animal} prop={s.dog.prop} ribbon={false} />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* number + name, left */}
+        <div className="absolute left-4 sm:left-10 top-[72px] sm:top-[6%] max-w-[300px]">
+          <AnimatePresence mode="wait">
+            <motion.div key={s.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.5 }}>
+              <p className="font-display text-[clamp(3rem,6vw,5rem)]">{pad(i + 1)}</p>
+              <p className="font-display text-[clamp(2.4rem,4.4vw,4rem)] mt-2">{s.name}</p>
+              <p className="caps leading-snug mt-3 hidden sm:block">{s.text}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* round picker, right */}
+        <div className="absolute inset-x-0 top-0 flex justify-center gap-2 sm:inset-x-auto sm:right-10 sm:top-[4%] sm:flex-col sm:gap-3">
+          {SHELVES.map((x, n) => (
+            <button key={x.name} onClick={() => setI(n)} aria-label={x.name}
+              className={cn('w-11 h-11 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-500', n === i ? 'bg-red text-[#FBFBF4] scale-110' : 'bg-[#FBFBF4] text-red hover:scale-105')}>
+              <x.icon className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          ))}
+        </div>
+
+        {/* open */}
+        <motion.div key={`open-${s.name}`} className="absolute left-1/2 bottom-[6%] -translate-x-1/2 flex flex-col items-center gap-3 text-center px-6"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <p className="caps leading-snug max-w-sm sm:hidden">{s.text}</p>
+          <Pill to={s.to} className="rotate-[-6deg]">Open {s.name}</Pill>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+// =====================================================================
+// 4. HOW IT WORKS: four cards dealt onto the pink table
+// =====================================================================
+const STEPS = [
+  ['Sign in', 'One tap with Google. You get a username and a friend code.'],
+  ['Pick genres', 'Tell us what you like and your home page starts picking for you.'],
+  ['Log & rate', 'Every book gets a date, a rating and, if you like, a review.'],
+  ['Find readers', 'Follow people with your taste, message them, swap books.'],
+];
+
+const HowItWorks = () => (
+  <section className="relative bg-pink overflow-hidden pb-28">
+    <div className="relative mx-auto max-w-[1100px] aspect-[2/1] max-h-[520px] min-h-[300px]">
+      <div className="absolute inset-x-[-10%] top-[10%] aspect-square rounded-full bg-blush" />
+      {[[8, 30], [30, 12], [70, 20], [90, 44]].map(([x, y], n) => (
+        <motion.span key={n} className="absolute w-9 h-9 rounded-full bg-[#FBFBF4] border border-red/30 caps flex items-center justify-center" style={{ left: `${x}%`, top: `${y}%` }}
+          animate={{ y: [0, -12, 0] }} transition={{ duration: 3 + n * 0.5, repeat: Infinity, ease: 'easeInOut' }}>{n + 1}</motion.span>
+      ))}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+        <h2 className="font-display text-[clamp(3.4rem,8vw,7rem)]"><Rise>How it works?</Rise></h2>
+        <p className="caps mt-4 max-w-sm leading-snug">Sign in, and we’ll be happy to look after your books.</p>
+      </div>
+    </div>
+    <div className="relative px-4 sm:px-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1300px] mx-auto">
+      {STEPS.map(([t, d], n) => (
+        <motion.div key={t}
+          initial={{ y: 120, rotate: n % 2 ? 8 : -8, opacity: 0 }}
+          whileInView={{ y: 0, rotate: n % 2 ? 2 : -2, opacity: 1 }}
+          whileHover={{ rotate: 0, y: -8 }}
+          viewport={{ once: true, margin: '-10%' }}
+          transition={{ type: 'spring', stiffness: 90, damping: 14, delay: n * 0.12 }}
+          className="relative bg-[#FBFBF4] text-red rounded-[28px] p-6 min-h-[260px] flex flex-col">
+          <div className="flex items-start justify-between">
+            <span className="caps opacity-70">Step</span>
+            <span className="font-display text-[42px] leading-none">{pad(n + 1)}.</span>
+          </div>
+          <p className="font-display text-[clamp(2.4rem,3.4vw,3.2rem)] mt-6">{t}</p>
+          <p className="caps leading-snug mt-auto pt-6">{d}</p>
+        </motion.div>
+      ))}
+    </div>
+  </section>
+);
+
+// =====================================================================
+// 5. YOUR SHELF (signed in): who you follow is reading what, and picks
+// =====================================================================
+const YourShelf = ({ items, recs }) => (
+  <section className="px-4 sm:px-8 py-24 max-w-[1400px] mx-auto">
+    <div className="flex flex-wrap items-end justify-between gap-6 mb-12">
+      <h2 className="font-display text-[clamp(3.4rem,8vw,7rem)]"><Rise>Your circle</Rise><Rise delay={0.08}>reads now</Rise></h2>
+      <p className="caps max-w-xs leading-snug">What the readers you follow have open right now. A green dot means they’re online. Say hi.</p>
+    </div>
+    {items.length === 0 ? (
+      <div className="rounded-[32px] bg-blush p-10 text-center">
+        <p className="font-display text-4xl">Nobody you follow is mid-book</p>
+        <p className="caps mt-2">Follow a few readers and their reads land here.</p>
+        <div className="mt-6"><Pill to="/people">Find readers</Pill></div>
+      </div>
+    ) : (
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.slice(0, 6).map((r) => (
+          <div key={`${r.username}-${r.book_id}`} className="group flex gap-4 p-4 rounded-[28px] bg-blush">
+            <Link to={bookPath(r)} className="w-20 aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover shrink-0 transition-transform duration-500 group-hover:-rotate-6"><CoverImage book={r} /></Link>
+            <div className="min-w-0 flex-1 flex flex-col">
+              <Link to={`/u/${r.username}`} className="flex items-center gap-2 caps">
+                <span className="relative"><Avatar username={r.username} size="w-7 h-7 text-xs" /><OnlineDot on={r.online} className="w-2.5 h-2.5" /></span>@{r.username}
+              </Link>
+              <Link to={bookPath(r)} className="font-display text-[1.7rem] leading-[0.95] mt-2 line-clamp-2">{r.title}</Link>
+              <p className="caps opacity-70 mt-1">since {timeAgo(r.since)}</p>
+              <Link to={`/messages/${r.username}`} className="mt-auto self-start caps inline-flex items-center gap-1.5 pt-3 link-under"><MessageCircle className="w-3.5 h-3.5" /> Ask how it’s going</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+    {recs.length > 0 && (
+      <>
+        <h3 className="font-display text-[clamp(2.4rem,5vw,4rem)] mt-20 mb-8">Picked for you, with reasons</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-12">
+          {recs.slice(0, 4).map((b) => <BookCard key={b.book_id} book={b} source={`recommendation:${b.source}`} />)}
+        </div>
+      </>
+    )}
+  </section>
+);
+
+// =====================================================================
+// 6. TODAY'S PICK: a real 3D book you can turn with your cursor
+// =====================================================================
+const TodaysPick = ({ today }) => {
+  const [share, setShare] = useState(false);
+  const { currentUser } = useAuth();
+  if (!today) return null;
+  return (
+    <section className="relative overflow-hidden py-28 px-4 sm:px-8">
+      {[[4, 10, 18], [80, 4, 14], [88, 64, 20], [-2, 70, 16]].map(([x, y, w], n) => (
+        <div key={n} className="absolute pointer-events-none" style={{ left: `${x}%`, top: `${y}%`, width: `${w}vw`, animation: `bob ${6 + n}s ease-in-out infinite` }}><PageBall seed={n + 40} className="w-full" /></div>
+      ))}
+      <div className="relative max-w-[1200px] mx-auto grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <p className="caps">Today’s pick · {new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}</p>
+          <h2 className="font-display text-[clamp(3.4rem,8vw,7.5rem)] mt-3"><Rise>The book</Rise><Rise delay={0.08}>you deserve!</Rise></h2>
+          <p className="font-display text-[clamp(1.8rem,3vw,2.6rem)] mt-8 leading-[0.95]">{today.title}</p>
+          <p className="caps mt-2">by {today.authors?.join(', ')}{today.pub_year ? ` · ${today.pub_year}` : ''}{today.page_count ? ` · ${today.page_count} pages` : ''}</p>
+          {today.description && <p className="text-[15px] leading-[1.6] mt-5 max-w-lg line-clamp-4">{today.description}</p>}
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Pill to={bookPath(today)}>Read more</Pill>
+            {currentUser && <Pill tone="line" onClick={() => setShare(true)}>Send to a friend</Pill>}
+          </div>
+        </div>
+        <div className="flex justify-center py-6">
+          <motion.div initial={{ rotate: -12, y: 80, opacity: 0 }} whileInView={{ rotate: 0, y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.2, ease: EASE }}>
+            <Link to={bookPath(today)} aria-label={today.title}>
+              <Book3D book={today} width={260}><CoverImage book={today} eager /></Book3D>
             </Link>
           </motion.div>
         </div>
       </div>
-
-      {/* Title */}
-      <div className="absolute left-4 sm:left-6 lg:left-8 bottom-[150px] sm:bottom-[170px] right-4">
-        <AnimatePresence mode="wait">
-          <motion.h1 key={i} className="font-serif text-sand text-[clamp(3rem,8.4vw,8.5rem)] leading-[0.95] tracking-[-0.035em]">
-            {slide.title.map((line, li) => (
-              <span key={line} className="block overflow-hidden pb-[0.06em]">
-                <motion.span
-                  className="block"
-                  initial={{ y: '105%' }}
-                  animate={{ y: '0%' }}
-                  exit={{ y: '-105%', transition: { duration: 0.6, ease: [0.76, 0, 0.24, 1], delay: li * 0.05 } }}
-                  transition={{ duration: 1.1, ease: EASE, delay: 0.15 + li * 0.1 }}
-                >
-                  {line}
-                </motion.span>
-              </span>
-            ))}
-          </motion.h1>
-        </AnimatePresence>
-      </div>
-
-      {/* Slide index with thumbnails and running lines */}
-      <div className="absolute left-4 sm:left-6 lg:left-8 right-4 sm:right-6 bottom-6 grid grid-cols-3 gap-3 sm:gap-6">
-        {SLIDES.map((s, n) => (
-          <button key={s.short} onClick={() => setI(n)} className="text-left group">
-            <span className="block h-px bg-latte/25 relative overflow-hidden mb-3">
-              {n === i && <motion.span key={`line-${i}`} className="absolute inset-y-0 left-0 bg-latte" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 7, ease: 'linear' }} />}
-              {n < i && <span className="absolute inset-0 bg-latte/70" />}
-            </span>
-            <span className="flex items-start gap-3">
-              <span className={cn('hidden sm:block w-[72px] h-[48px] rounded-[6px] overflow-hidden shrink-0 transition-opacity', n === i ? 'opacity-100' : 'opacity-50 group-hover:opacity-80')}>
-                {thumbs[n] && <span className="block w-full h-full scale-150"><CoverImage book={thumbs[n]} /></span>}
-              </span>
-              <span className={cn('text-[12px] leading-tight transition-opacity', n === i ? 'opacity-100' : 'opacity-50 group-hover:opacity-80')}>
-                <span className="block tabular-nums">{pad(n + 1)}</span>
-                <span className="block mt-1.5">{s.short}</span>
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {stats && (
-        <div className="absolute left-4 sm:left-6 lg:left-8 top-[24%] hidden lg:block text-[12px] leading-[1.6] opacity-80">
-          <p><span className="tabular-nums"><CountUp value={stats.books} /></span> books</p>
-          <p><span className="tabular-nums"><CountUp value={stats.authors} /></span> authors</p>
-          <p><span className="tabular-nums"><CountUp value={stats.genres} /></span> genres</p>
-        </div>
-      )}
+      {currentUser && <ShareToFriend open={share} onClose={() => setShare(false)} book={today} />}
     </section>
   );
 };
 
 // =====================================================================
-// GENRE TILES: coloured blocks with fanned covers, drag to scroll
+// 7. AUTHORS: the testimonial wall, but for writers
 // =====================================================================
-const TILE_COLOURS = ['#F2B530', '#2B7B1E', '#D9B8A0', '#004438', '#3C0755', '#0762A3', '#940047', '#CE5E16', '#296D10', '#002988', '#BE9A83', '#1F4D3F'];
-const GenreTiles = ({ genres }) => {
-  const ref = useRef(null);
-  const drag = useRef(null);
-  if (!genres.length) return null;
+const Authors = ({ authors }) => {
+  const [i, setI] = useState(0);
+  const list = authors.slice(0, 10);
+  useEffect(() => {
+    if (!list.length) return undefined;
+    const id = setTimeout(() => setI((n) => (n + 1) % list.length), 6500);
+    return () => clearTimeout(id);
+  }, [i, list.length]);
+  if (!list.length) return null;
+  const a = list[i];
+  const first = (a.bio || '').split(/(?<=\.)\s/)[0];
   return (
-    <section className="bg-espresso py-4 -mt-px">
-      <div
-        ref={ref}
-        className="flex gap-3 overflow-x-auto px-4 sm:px-6 lg:px-8 pb-2 cursor-grab active:cursor-grabbing select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        data-lenis-prevent
-        onPointerDown={(e) => { drag.current = { x: e.clientX, s: ref.current.scrollLeft, moved: false }; }}
-        onPointerMove={(e) => { if (drag.current) { const dx = e.clientX - drag.current.x; if (Math.abs(dx) > 4) drag.current.moved = true; ref.current.scrollLeft = drag.current.s - dx; } }}
-        onPointerUp={() => { setTimeout(() => { drag.current = null; }, 0); }}
-        onPointerLeave={() => { drag.current = null; }}
-        onClickCapture={(e) => { if (drag.current?.moved) { e.preventDefault(); e.stopPropagation(); } }}
-      >
-        {genres.slice(0, 16).map((g, i) => {
-          const bg = TILE_COLOURS[i % TILE_COLOURS.length];
-          const light = ['#F2B530', '#D9B8A0', '#BE9A83'].includes(bg);
+    <section className="relative bg-blush overflow-hidden py-24">
+      <div className="px-4 sm:px-8">
+        <p className="caps">Authors</p>
+        <div className="relative mt-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-lenis-prevent>
+          <div className="relative flex min-w-max">
+            <span className="absolute left-0 right-0 top-[9px] h-px bg-red/40" />
+            {list.map((x, n) => (
+              <button key={x.name} onClick={() => setI(n)} className="relative w-[150px] sm:w-[170px] text-center pt-0">
+                <span className={cn('mx-auto block rounded-full bg-red transition-all duration-500', n === i ? 'w-[19px] h-[19px] ring-4 ring-red/20' : 'w-2 h-2 mt-[6px] mb-[5px]')} />
+                <span className="block caps mt-2 opacity-70">{pad(n + 1)}</span>
+                <span className={cn('block caps mt-0.5 truncate px-2', n === i ? 'opacity-100' : 'opacity-60')}>{x.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative max-w-[1200px] mx-auto px-4 sm:px-8 mt-14 grid md:grid-cols-[auto_1fr] gap-10 items-center">
+        <div className="relative w-[240px] sm:w-[300px] mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div key={a.name} initial={{ scale: 0.7, opacity: 0, rotate: -8 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, rotate: 8 }} transition={{ duration: 0.6, ease: EASE }}
+              className="w-full aspect-square rounded-full overflow-hidden border-[3px] border-red bg-pink">
+              <img src={a.photo_url} alt={a.name} className="w-full h-full object-cover" />
+            </motion.div>
+          </AnimatePresence>
+          <div className="absolute -right-10 -bottom-6 w-[46%]"><DogEar animal="fox" prop="quill" seed={51} body={false} ribbon={false} /></div>
+          <span className="absolute -left-4 top-6 font-display text-[18px] bg-red text-[#FBFBF4] rounded-full px-4 py-1.5 -rotate-12">{a.books} books</span>
+        </div>
+        <div className="relative">
+          <span className="hidden lg:flex absolute -left-14 top-0 flex-col items-center caps leading-[1.05] opacity-70">{'READ A BIO'.split('').map((c, n) => <span key={n}>{c === ' ' ? ' ' : c}</span>)}</span>
+          <AnimatePresence mode="wait">
+            <motion.div key={a.name} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6, ease: EASE }}>
+              <p className="font-display text-[clamp(2.6rem,5vw,4.6rem)]">{a.name}</p>
+              <p className="font-display text-[clamp(1.4rem,2.2vw,2rem)] leading-[1.05] mt-4 line-clamp-4">{first}</p>
+              <p className="caps mt-5">★ {Number(a.avg_rating).toFixed(1)} average · {Number(a.ratings).toLocaleString()} ratings</p>
+              <div className="mt-6"><Pill to={`/author/${encodeURIComponent(a.name)}`} tone="line">Read the full story</Pill></div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// =====================================================================
+// 8. PICK YOUR PACE: the price cards, as reading goals
+// =====================================================================
+const PACES = [
+  ['A book a month', 12, 'Slow and steady, a chapter a night'],
+  ['Twice a month', 24, 'Breaks down to one every fortnight'],
+  ['One a week', 52, 'For the reader who never leaves home without one', true],
+];
+
+const Pace = () => {
+  const { currentUser, me, loginWithGoogle } = useAuth();
+  const navigate = useNavigate();
+  const year = new Date().getFullYear();
+  const [goal, setGoalState] = useState(null);
+  const [saving, setSaving] = useState(null);
+  useEffect(() => {
+    if (!currentUser) { setGoalState(null); return; }
+    getGoal(year).then(setGoalState).catch(() => {});
+  }, [currentUser, year]);
+  const choose = async (n) => {
+    if (!currentUser) { loginWithGoogle(); return; }
+    setSaving(n);
+    try { setGoalState(await setGoal(year, n)); } finally { setSaving(null); }
+  };
+  return (
+    <section className="relative bg-sky text-steel overflow-hidden pt-24 pb-[min(40vw,340px)]">
+      <h2 className="font-display text-center text-[clamp(3.4rem,9vw,8rem)]"><Rise>Pick your pace</Rise></h2>
+      <p className="caps text-center mt-3">Your {year} reading goal{goal?.target_books ? `: ${goal.books_finished} of ${goal.target_books} read` : ''}</p>
+      <div className="mt-12 px-4 sm:px-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1300px] mx-auto">
+        {PACES.map(([t, n, d, popular], k) => {
+          const active = goal?.target_books === n;
           return (
-            <motion.div key={g.name} initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, ease: EASE, delay: (i % 6) * 0.06 }}>
-              <Link
-                to={`/explore?genre=${encodeURIComponent(g.name)}`}
-                draggable={false}
-                className="group relative block w-[280px] sm:w-[340px] h-[230px] rounded-[14px] overflow-hidden shrink-0"
-                style={{ background: bg, color: light ? '#2B1B14' : '#FCF3ED' }}
-              >
-                <div className="absolute inset-x-0 top-5 bottom-14 flex items-center justify-center">
-                  {(g.covers || []).slice(0, 3).map((c, k) => (
-                    <img
-                      key={c}
-                      src={c}
-                      alt=""
-                      draggable={false}
-                      className="absolute h-[150px] aspect-[2/3] object-cover rounded-[3px] shadow-[0_18px_30px_-10px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                      style={{ transform: `translateX(${(k - 1) * 46}px) rotate(${(k - 1) * 8}deg)`, zIndex: k === 1 ? 3 : 1 }}
-                    />
-                  ))}
-                  <span className="absolute inset-0 transition-transform duration-700 group-hover:scale-105" />
-                </div>
-                <div className="absolute left-4 right-4 bottom-3 flex items-end justify-between">
-                  <span className="font-wide font-semibold text-[24px] leading-none">{g.name}</span>
-                  <span className="text-[11px] opacity-70 tabular-nums">{g.book_count} books</span>
-                </div>
-              </Link>
+            <motion.div key={t} initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8, ease: EASE, delay: k * 0.1 }} className="flex flex-col gap-2">
+              <div className="relative flex-1 bg-[#FBFBF4] rounded-[22px] p-6 text-center flex flex-col items-center">
+                {popular && <span className="absolute left-1/2 -translate-x-1/2 -top-3 caps text-[10px] bg-steel text-[#FBFBF4] rounded-full px-3 py-1 whitespace-nowrap">Most popular</span>}
+                <p className="font-display text-[26px]">{t}</p>
+                <p className="caps mt-6 opacity-70">Goal</p>
+                <p className="font-display text-[clamp(3.6rem,5vw,4.8rem)] leading-none">{n}<span className="text-[0.45em]">\yr.</span></p>
+                <p className="caps mt-auto pt-6 leading-snug opacity-80">{d}</p>
+              </div>
+              <button onClick={() => choose(n)} className={cn('h-12 rounded-full font-display text-[22px] transition-colors', active ? 'bg-red text-[#FBFBF4]' : 'bg-steel text-[#FBFBF4] hover:bg-red')}>
+                {saving === n ? 'Saving…' : active ? 'Your goal ✓' : currentUser ? 'Set it' : 'Sign in to set'}
+              </button>
             </motion.div>
           );
         })}
+        <motion.button
+          onClick={() => (me ? navigate(`/u/${me.username}/stats`) : loginWithGoogle())}
+          initial={{ y: 60, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8, ease: EASE, delay: 0.3 }}
+          className="group rounded-[22px] bg-steel text-[#FBFBF4] p-6 flex flex-col items-center justify-between min-h-[300px]">
+          <p className="font-display text-[26px]">Year in books</p>
+          <span className="w-20 h-20 rounded-full bg-[#FBFBF4]/20 flex items-center justify-center transition-transform duration-500 group-hover:rotate-90 group-hover:scale-110"><ArrowUpRight className="w-7 h-7" /></span>
+          <p className="caps opacity-80">Your reading, counted and charted</p>
+        </motion.button>
       </div>
+      {/* a giant dog rising out of the bottom edge */}
+      <motion.div className="absolute left-1/2 -translate-x-1/2 bottom-[-12%] w-[min(70vw,560px)]" initial={{ y: '40%' }} whileInView={{ y: '0%' }} viewport={{ once: true }} transition={{ duration: 1.4, ease: EASE }}>
+        <DogEar animal="bear" seed={61} prop="glasses" ribbon={false} />
+      </motion.div>
     </section>
   );
 };
 
 // =====================================================================
-// STATEMENT: giant condensed caps + old covers floating on curved lines
+// 9. QUESTIONS? ask the assistant
 // =====================================================================
-const Floating = ({ book, x, y, w, rot, speed, frame }) => {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
-  const ty = useTransform(scrollYProgress, [0, 1], [speed * 80, -speed * 80]);
-  const r = useTransform(scrollYProgress, [0, 1], [rot - 4, rot + 4]);
+const Questions = () => (
+  <section className="relative bg-bg-base py-24 px-4 overflow-hidden">
+    <div className="relative mx-auto w-[min(92vw,620px)] aspect-square rounded-full bg-pink flex flex-col items-center justify-center text-center px-10">
+      <motion.div className="absolute -top-6 right-[8%] w-24" animate={{ rotate: [0, 14, 0] }} transition={{ duration: 3, repeat: Infinity }}><Paw className="w-full text-red/20" /></motion.div>
+      <h2 className="font-display text-[clamp(3rem,8vw,6rem)]"><Rise>Have</Rise><Rise delay={0.06}>questions?</Rise></h2>
+      <p className="caps mt-4 max-w-xs leading-snug">Ask the assistant for a book the way you’d ask a friend. It answers from the catalogue.</p>
+      <div className="mt-6"><Pill to="/chat" className="rotate-[-4deg]">Ask the assistant</Pill></div>
+    </div>
+  </section>
+);
+
+// =====================================================================
+// 10. SHARE THE LOVE: covers scattered around a long red ribbon
+// =====================================================================
+const SPOTS = [
+  [2, 8, 13, -6, 0.6], [17, 22, 10, 5, 1.2], [6, 52, 11, 4, 0.9], [20, 70, 13, -4, 1.4], [70, 6, 12, 6, 1.1],
+  [86, 24, 11, -5, 0.7], [76, 56, 14, 3, 1.3], [90, 74, 10, -3, 0.8], [34, 84, 9, 6, 1.6], [58, 86, 10, -6, 1],
+];
+
+const Floating = ({ book, x, y, w, rot, speed, progress }) => {
+  const ty = useTransform(progress, [0, 1], [speed * 120, -speed * 120]);
   return (
-    <motion.div ref={ref} className="absolute" style={{ left: `${x}%`, top: `${y}%`, width: w, y: ty, rotate: r }}>
-      <Link to={bookPath(book)} data-cursor="Open" className={cn('block shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] transition-transform duration-500 hover:scale-110 hover:z-10', frame && 'bg-[#F6EBDD] p-2 pb-3 rounded-[3px]')}>
-        <span className="block aspect-[2/3] overflow-hidden rounded-[2px] sepia-[0.35] hover:sepia-0 transition-[filter] duration-700"><CoverImage book={book} /></span>
+    <motion.div className="absolute" style={{ left: `${x}%`, top: `${y}%`, width: `${w}vw`, minWidth: 64, y: ty, rotate: rot }}>
+      <Link to={bookPath(book)} className="block aspect-[2/3] rounded-[6px] overflow-hidden shadow-cover transition-transform duration-500 hover:scale-110 hover:rotate-0">
+        <CoverImage book={book} />
       </Link>
     </motion.div>
   );
 };
 
-const SPOTS = [
-  [4, 6, 150, -6, 1, true], [18, 46, 110, 4, 1.6, false], [8, 74, 130, 3, 0.8, true], [30, 82, 120, -5, 1.3, false],
-  [72, 8, 120, 6, 1.4, true], [86, 30, 140, -3, 0.9, false], [78, 64, 160, 5, 1.2, true], [58, 86, 110, -7, 1.7, false],
-  [44, 60, 96, 3, 2, false],
-];
-
-const Statement = ({ stats, oldBooks }) => (
-  <section className="relative bg-espresso text-latte overflow-hidden py-28 md:py-40 min-h-[120vh]">
-    {/* curved guide lines */}
-    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-      {['M-50 300 C 250 420, 300 700, 520 1050', 'M1050 150 C 800 300, 760 600, 420 1050', 'M-50 820 C 300 640, 700 640, 1050 860'].map((d, i) => (
-        <motion.path key={d} d={d} fill="none" stroke="rgba(237,209,189,0.18)" strokeWidth="1" vectorEffect="non-scaling-stroke"
-          initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 2.4, ease: EASE, delay: i * 0.3 }} />
-      ))}
-    </svg>
-    <div className="absolute inset-0 hidden md:block">
-      {oldBooks.slice(0, SPOTS.length).map((b, i) => {
-        const [x, y, w, rot, speed, frame] = SPOTS[i];
-        return <Floating key={b.book_id} book={b} x={x} y={y} w={w} rot={rot} speed={speed} frame={frame} />;
-      })}
-    </div>
-    <div className="relative max-w-5xl mx-auto px-5 text-center">
-      <FadeIn>
-        <h2 className="font-statement text-latte text-[clamp(3.2rem,10vw,9.5rem)]">
-          Since {stats?.decades?.[0]?.decade || 1800},<br />
-          books <span className="font-serif normal-case font-light text-[0.45em] align-middle tracking-[-0.02em] mx-1">that</span> awaken<br />
-          stories
-        </h2>
-      </FadeIn>
-      <FadeIn delay={0.15} className="mt-10 flex justify-center">
-        <PillCTA to="/explore?sort=oldest" tone="latte" arrow="cream">From the oldest shelf</PillCTA>
-      </FadeIn>
-      <FadeIn delay={0.25}>
-        <p className="text-[clamp(1.1rem,1.6vw,1.4rem)] leading-[1.45] max-w-xl mx-auto mt-10 text-latte/85">
-          BookLog began as a class project with a simple idea: every book you read deserves a line in a diary.
-          Today it holds {stats ? stats.books.toLocaleString() : 'thousands of'} books across {stats?.genres || 'dozens of'} genres,
-          kept honest by PostgreSQL, connected by Neo4j and remembered by MongoDB.
-        </p>
-      </FadeIn>
-      {stats && (
-        <div className="grid grid-cols-3 gap-6 mt-16 max-w-2xl mx-auto border-t border-latte/15 pt-6">
-          {[['Books', stats.books], ['Authors', stats.authors], ['Pages', stats.pages]].map(([k, v]) => (
-            <div key={k}>
-              <p className="font-statement text-[clamp(1.8rem,3.6vw,3rem)] tabular-nums"><CountUp value={v} /></p>
-              <p className="text-[12px] opacity-60 mt-1">{k}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  </section>
-);
-
-// =====================================================================
-// JOURNEY OF A BOOK: a wavy line that draws as you scroll
-// =====================================================================
-const STOPS = [
-  { icon: Search, t: 'Discover', d: 'Search 20k+ books with typos allowed, or swipe through reels.', x: 12, y: 62 },
-  { icon: PenLine, t: 'Log', d: 'Rate, review and date every read. Triggers keep the counts true.', x: 36, y: 30 },
-  { icon: MessageCircle, t: 'Share', d: 'Send books in messages, post takes only followers can see.', x: 62, y: 66 },
-  { icon: Users, t: 'Connect', d: 'Follow readers, see taste match, and who is reading what now.', x: 86, y: 34 },
-];
-
-const Journey = ({ bg }) => {
+const ShareTheLove = ({ books }) => {
   const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.8', 'end 0.6'] });
-  const draw = useSpring(useTransform(scrollYProgress, [0, 1], [0, 1]), { stiffness: 60, damping: 20 });
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const draw = useTransform(scrollYProgress, [0.1, 0.6], [0, 1]);
   return (
-    <section ref={ref} className="relative bg-roast text-latte overflow-hidden min-h-[100vh] py-24">
-      {bg.length > 0 && <div className="absolute inset-0 opacity-40"><CoverWall books={bg} cols={7} /></div>}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(26,16,12,0.55),rgba(26,16,12,0.95)_75%)]" />
-      <div className="relative text-center px-5">
-        <FadeIn>
-          <h2 className="font-statement text-[clamp(2.8rem,8vw,7.5rem)]">
-            The journey <span className="font-serif normal-case font-light text-[0.45em] align-middle mx-1">of a</span> book
-          </h2>
-        </FadeIn>
+    <section ref={ref} className="relative overflow-hidden bg-bg-base min-h-[120vh] flex items-center justify-center">
+      <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+        <motion.path d="M500 -20 C 380 160, 640 260, 500 420 S 340 700, 520 820 S 600 980, 480 1040" fill="none" stroke="var(--color-red)" strokeWidth="16" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ pathLength: draw }} />
+      </svg>
+      <div className="absolute inset-0">
+        {books.slice(0, SPOTS.length).map((b, n) => {
+          const [x, y, w, rot, speed] = SPOTS[n];
+          return <Floating key={b.book_id} book={b} x={x} y={y} w={w} rot={rot} speed={speed} progress={scrollYProgress} />;
+        })}
       </div>
-      <div className="relative mx-auto max-w-[1300px] h-[520px] mt-6 hidden md:block">
-        <svg viewBox="0 0 1000 400" className="absolute inset-0 w-full h-full" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M40 300 C 160 300, 200 80, 360 120 S 520 340, 620 270 S 780 40, 960 140" fill="none" stroke="rgba(237,209,189,0.12)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-          <motion.path d="M40 300 C 160 300, 200 80, 360 120 S 520 340, 620 270 S 780 40, 960 140" fill="none" stroke="#EDD1BD" strokeWidth="2" vectorEffect="non-scaling-stroke" style={{ pathLength: draw }} />
-        </svg>
-        {STOPS.map(({ icon: Icon, t, d, x, y }, i) => (
-          <motion.div key={t} className="absolute -translate-x-1/2 -translate-y-1/2 w-[230px] text-center" style={{ left: `${x}%`, top: `${y}%` }}
-            initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: '-15%' }} transition={{ duration: 0.8, ease: EASE, delay: i * 0.25 }}>
-            <span className="mx-auto w-20 h-20 rounded-full border border-latte/30 bg-espresso/70 backdrop-blur flex items-center justify-center"><Icon className="w-8 h-8" strokeWidth={1.2} /></span>
-            <p className="font-wide font-semibold text-[24px] mt-4">{t}</p>
-            <p className="text-[13px] opacity-70 mt-1 leading-snug">{d}</p>
-          </motion.div>
-        ))}
-      </div>
-      <div className="relative md:hidden px-5 mt-10 space-y-8">
-        {STOPS.map(({ icon: Icon, t, d }) => (
-          <div key={t} className="flex gap-4 items-start">
-            <span className="w-14 h-14 rounded-full border border-latte/30 flex items-center justify-center shrink-0"><Icon className="w-6 h-6" strokeWidth={1.3} /></span>
-            <div><p className="font-wide font-semibold text-[22px]">{t}</p><p className="text-[13px] opacity-70">{d}</p></div>
-          </div>
-        ))}
-      </div>
-      <div className="relative text-center px-5 mt-6">
-        <p className="text-[clamp(1.05rem,1.5vw,1.3rem)] leading-[1.45] max-w-xl mx-auto text-latte/85">A book begins on a shelf, finds its reader in a search, lives on in a review and travels on through a friend.</p>
-        <div className="mt-8 flex justify-center"><PillCTA to="/reels" tone="latte" arrow="red">Start with reels</PillCTA></div>
-      </div>
-    </section>
-  );
-};
-
-// =====================================================================
-// AUTHORS strip + "A for Authors"
-// =====================================================================
-const Authors = ({ authors }) => {
-  if (!authors.length) return null;
-  const row = [...authors, ...authors];
-  return (
-    <section className="bg-espresso text-latte py-16 overflow-hidden">
-      <div className="marquee">
-        <div className="marquee-track flex gap-4 w-max" style={{ animationDuration: '70s' }}>
-          {row.map((a, i) => (
-            <Link key={`${a.name}-${i}`} to={`/author/${encodeURIComponent(a.name)}`} className="group relative w-[200px] sm:w-[230px] aspect-[4/5] rounded-[12px] overflow-hidden shrink-0 bg-cocoa">
-              <img src={a.photo_url} alt={a.name} loading="lazy" className="w-full h-full object-cover grayscale-[0.4] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700" />
-              <span className="absolute inset-0 bg-gradient-to-t from-roast/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <span className="absolute left-3 right-3 bottom-3 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-                <span className="block font-wide font-semibold text-[18px] leading-none">{a.name}</span>
-                <span className="block text-[11px] opacity-70 mt-1">{a.books} books · ★ {Number(a.avg_rating).toFixed(1)}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
-      <div className="text-center px-5 mt-20">
-        <FadeIn><h2 className="font-statement text-[clamp(3rem,9vw,8rem)]">A <span className="font-serif normal-case font-light text-[0.5em] align-middle mx-1">for</span> Authors</h2></FadeIn>
-        <FadeIn delay={0.15}><p className="text-[clamp(1.05rem,1.5vw,1.3rem)] leading-[1.45] max-w-xl mx-auto mt-6 text-latte/85">Thousands of writers with bios and portraits. Follow the ones you love and their books start shaping your picks.</p></FadeIn>
-        <FadeIn delay={0.25} className="mt-8 flex justify-center"><PillCTA to="/search" tone="latte" arrow="red">Find an author</PillCTA></FadeIn>
-      </div>
-    </section>
-  );
-};
-
-// =====================================================================
-// READING NOW (signed in): what the people you follow are reading
-// =====================================================================
-const ReadingNow = ({ items, recs }) => (
-  <section className="px-4 sm:px-6 lg:px-8 py-24">
-    <div className="grid lg:grid-cols-12 gap-10">
-      <div className="lg:col-span-4">
-        <p className="text-[13px] font-medium">Your circle</p>
-        <h2 className="font-serif text-[clamp(2.6rem,5vw,4.6rem)] leading-[0.95] mt-2">Reading now, <br />right now.</h2>
-        <p className="text-text-muted mt-4 max-w-sm">What the readers you follow have on their nightstand. Green means they’re online, so say hi.</p>
-        <div className="mt-8"><GoalWidget /></div>
-      </div>
-      <div className="lg:col-span-8">
-        {items.length === 0 ? (
-          <div className="rounded-[22px] border border-dashed border-border p-10 text-center">
-            <p className="font-serif text-3xl">Nobody you follow is mid-book.</p>
-            <p className="text-text-muted mt-2">Follow a few readers and their current reads appear here.</p>
-            <div className="mt-6 flex justify-center"><PillCTA to="/people" tone="dark" arrow="red">Find readers</PillCTA></div>
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
-            {items.slice(0, 6).map((r, i) => (
-              <motion.div key={`${r.username}-${r.book_id}`} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.7, ease: EASE }}
-                className="group flex gap-4 p-4 rounded-[20px] bg-surface-white border border-border hover:border-text-main transition-colors">
-                <Link to={bookPath(r)} className="w-20 aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover shrink-0 transition-transform duration-500 group-hover:-rotate-3"><CoverImage book={r} /></Link>
-                <div className="min-w-0 flex-1 flex flex-col">
-                  <Link to={`/u/${r.username}`} className="flex items-center gap-2">
-                    <span className="relative"><Avatar username={r.username} size="w-7 h-7 text-xs" /><OnlineDot on={r.online} className="w-2.5 h-2.5" /></span>
-                    <span className="text-[13px] font-medium">@{r.username}</span>
-                  </Link>
-                  <Link to={bookPath(r)} className="font-serif text-[1.35rem] leading-tight mt-2 line-clamp-2 hover:text-accent-red transition-colors">{r.title}</Link>
-                  <p className="text-[12px] text-text-muted mt-1">since {timeAgo(r.since)}</p>
-                  <Link to={`/messages/${r.username}`} className="mt-auto self-start inline-flex items-center gap-1.5 text-[12px] font-medium pt-3 hover:text-accent-red"><MessageCircle className="w-3.5 h-3.5" /> Ask how it’s going</Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-        {recs.length > 0 && (
-          <>
-            <p className="text-[13px] font-medium mt-14 mb-5">Picked for you, with reasons</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-10">
-              {recs.slice(0, 4).map((b) => <BookCard key={b.book_id} book={b} source={`recommendation:${b.source}`} />)}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  </section>
-);
-
-// =====================================================================
-// CULTURE OF READING (cream) + strip of covers
-// =====================================================================
-const Culture = ({ strip, trending }) => (
-  <section className="bg-bg-base">
-    <div className="flex gap-3 overflow-hidden px-4 sm:px-6 lg:px-8 pt-4">
-      {strip.slice(0, 8).map((b, i) => (
-        <motion.div key={b.book_id} className="shrink-0 w-[min(32vw,260px)] aspect-[4/3] rounded-[12px] overflow-hidden relative" initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.8, ease: EASE }}>
-          <Link to={bookPath(b)} className="group block w-full h-full">
-            <span className="absolute inset-0 scale-[1.6] blur-[1px] opacity-90 transition-transform duration-[1.5s] group-hover:scale-[1.8]"><CoverImage book={b} /></span>
-            <span className="absolute inset-0 bg-espresso/10" />
-          </Link>
-        </motion.div>
-      ))}
-    </div>
-    <div className="px-4 sm:px-6 lg:px-8 py-20 md:py-28 grid md:grid-cols-12 gap-10">
-      <div className="md:col-span-7">
-        <FadeIn><h2 className="font-serif text-[clamp(2.8rem,6vw,5.4rem)] leading-[0.95]">The culture <br />of reading</h2></FadeIn>
-        <FadeIn delay={0.15}><p className="text-[17px] leading-[1.55] max-w-xl mt-10">
-          Reading is a ritual: the chair, the lamp, the line you underline twice. BookLog keeps those rituals in one place,
-          with a diary that remembers every book, reels that put one cover on your screen at a time, and messages for the friend who has to read it next.
-        </p></FadeIn>
-      </div>
-      <div className="md:col-span-5 md:border-l md:border-border md:pl-10 flex flex-col gap-10">
-        <div>
-          <p className="font-serif text-[clamp(2rem,3.4vw,3rem)] leading-none">Trending this week</p>
-          <p className="text-text-muted mt-2 text-[14px]">Most opened books, counted from MongoDB activity logs.</p>
-          <div className="mt-5"><PillCTA to="/explore" tone="light" arrow="dark">Explore</PillCTA></div>
-        </div>
-        <div>
-          <p className="font-serif text-[clamp(2rem,3.4vw,3rem)] leading-none">Year in books</p>
-          <p className="text-text-muted mt-2 text-[14px]">Your reading, counted and charted from your diary.</p>
-          <div className="mt-5"><PillCTA to="/library" tone="light" arrow="dark">Open my books</PillCTA></div>
-        </div>
-      </div>
-    </div>
-    {trending.length >= 6 && <div className="pb-16 overflow-hidden"><VelocityRow books={trending} base={-2} /></div>}
-  </section>
-);
-
-// =====================================================================
-// QUIZ teaser with covers drifting down
-// =====================================================================
-const QuizTeaser = ({ books }) => (
-  <section className="relative bg-bg-base overflow-hidden min-h-[90vh] flex items-center justify-center">
-    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-      {books.slice(0, 8).map((b, i) => (
-        <motion.div key={b.book_id} className="absolute w-[90px] md:w-[130px] aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover"
-          style={{ left: `${i % 2 ? 78 + (i % 4) * 5 : 3 + (i % 4) * 5}%` }}
-          initial={{ y: '-40vh', rotate: (i % 2 ? 1 : -1) * 12 }}
-          animate={{ y: '120vh', rotate: (i % 2 ? -1 : 1) * 12 }}
-          transition={{ duration: 16 + (i % 4) * 3, repeat: Infinity, ease: 'linear', delay: i * 2 }}>
-          <CoverImage book={b} />
-        </motion.div>
-      ))}
-    </div>
-    <div className="relative text-center px-5">
-      <p className="text-[14px] font-medium">BookLog Quiz</p>
-      <FadeIn><h2 className="font-serif text-[clamp(2.6rem,6.5vw,5.6rem)] leading-[0.95] mt-3">What is your reader profile?</h2></FadeIn>
-      <p className="text-[16px] text-text-muted mt-4">From mood to era, find out which shelves suit you best.</p>
-      <div className="mt-10 flex justify-center"><PillCTA to="/quiz" tone="light" arrow="mustard">Start quiz</PillCTA></div>
-    </div>
-  </section>
-);
-
-// =====================================================================
-// JOURNAL: latest reviews (falls back to popular lists)
-// =====================================================================
-const Journal = ({ reviews, lists }) => {
-  const items = reviews.length
-    ? reviews.map((r) => ({ key: `r${r.entry_id}`, href: bookPath(r), cover: r, title: `@${r.username} on ${r.title}`, text: r.review_text, tag: 'Review', date: r.created_at }))
-    : lists.map((l) => ({ key: `l${l.list_id}`, href: `/lists/${l.list_id}`, cover: l.books?.[0] || (l.covers?.[0] ? { thumbnail: l.covers[0], title: l.name } : null), title: l.name, text: l.description, tag: 'List', date: l.created_at || l.updated_at }));
-  if (!items.length) return null;
-  return (
-    <section className="bg-bg-base px-4 sm:px-6 lg:px-8 py-24 border-t border-border">
-      <div className="grid lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-3">
-          <h2 className="font-statement text-[clamp(3rem,6vw,5.5rem)]">Journal</h2>
-          <p className="text-[15px] mt-4 max-w-xs">Stories of people, opinions and shelves, through the lens of reading.</p>
-          <div className="mt-6"><PillCTA to={reviews.length ? '/feed' : '/lists'} tone="light" arrow="dark">Explore</PillCTA></div>
-        </div>
-        <div className="lg:col-span-9 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
-          {items.slice(0, 6).map((it, i) => (
-            <motion.div key={it.key} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.08, duration: 0.8, ease: EASE }}>
-              <Link to={it.href} className="group block">
-                <div className="aspect-[4/3] rounded-[10px] overflow-hidden bg-espresso relative">
-                  {it.cover && <span className="absolute inset-0 scale-125 blur-[2px] opacity-60"><CoverImage book={it.cover} /></span>}
-                  {it.cover && <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[78%] aspect-[2/3] rounded-[3px] overflow-hidden shadow-cover transition-transform duration-700 group-hover:scale-105 group-hover:-rotate-2"><CoverImage book={it.cover} /></span>}
-                </div>
-                <p className="text-[17px] leading-[1.3] mt-4 line-clamp-2 group-hover:text-accent-red transition-colors">{it.title}</p>
-                {it.text && <p className="text-[13px] text-text-muted mt-1 line-clamp-2">{it.text}</p>}
-                <p className="flex items-center gap-2 mt-3 text-[12px]">
-                  <span className="h-7 px-3 rounded-full border border-text-main/40 inline-flex items-center">{it.tag}</span>
-                  {it.date && <span className="text-text-muted">— {String(it.date).slice(0, 10)}</span>}
-                </p>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+      <div className="relative text-center px-6">
+        <p className="caps flex items-center justify-center gap-2"><Heart className="w-4 h-4" /> Share the love</p>
+        <h2 className="font-display text-[clamp(3.4rem,10vw,9rem)] mt-3"><Rise>Of your books</Rise></h2>
+        <p className="caps mt-4 max-w-sm mx-auto leading-snug">Follow readers, see your taste match, and send the one they have to read next.</p>
+        <div className="mt-8"><Pill to="/people">Find your readers</Pill></div>
       </div>
     </section>
   );
@@ -547,35 +531,23 @@ const Journal = ({ reviews, lists }) => {
 // =====================================================================
 const HomePage = () => {
   const { currentUser, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const desktop = useIsDesktop();
   const [stats, setStats] = useState(null);
-  const [walls, setWalls] = useState([]);
   const [today, setToday] = useState(null);
-  const [genres, setGenres] = useState([]);
-  const [oldBooks, setOldBooks] = useState([]);
   const [authors, setAuthors] = useState([]);
-  const [trending, setTrending] = useState([]);
-  const [journal, setJournal] = useState([]);
-  const [lists, setLists] = useState([]);
+  const [popular, setPopular] = useState([]);
   const [reading, setReading] = useState([]);
   const [recs, setRecs] = useState([]);
-  const [selected, setSelected] = useState([]);
-  const [stageTotal, setStageTotal] = useState(null);
-  const loadingMore = useRef(false);
 
   useEffect(() => {
     getCatalogueStats().then(setStats).catch(() => {});
     getBookOfTheDay().then(setToday).catch(() => {});
-    getGenreIndex().then(setGenres).catch(() => {});
-    getFeaturedAuthors(16).then(setAuthors).catch(() => {});
-    getTrending(16).then(setTrending).catch(() => {});
-    getJournal(6).then(setJournal).catch(() => {});
-    browseLists('popular').then((l) => setLists(l.slice(0, 6))).catch(() => {});
-    Promise.all(SLIDES.map((s) => browseBooks({ sort: s.sort, limit: 48 }).then((r) => r.books.filter((b) => b.thumbnail)).catch(() => [])))
-      .then(setWalls);
-    browseBooks({ sort: 'oldest', min_rating: 3.5, limit: 12 }).then((r) => setOldBooks(r.books)).catch(() => {});
-    browseBooks({ sort: 'popular', limit: 20 }).then((r) => { setSelected(r.books); setStageTotal(r.total); }).catch(() => {});
+    getFeaturedAuthors(10).then(setAuthors).catch(() => {});
+    browseBooks({ sort: 'popular', limit: 60 })
+      .then((r) => {
+        const real = r.books.filter((b) => b.thumbnail?.includes('/b/id/'));
+        setPopular(real.length >= 10 ? real : r.books.filter((b) => b.thumbnail));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -584,43 +556,18 @@ const HomePage = () => {
     getPersonalizedRecommendations().then(setRecs).catch(() => {});
   }, [currentUser, authLoading]);
 
-  const loadMore = () => {
-    if (loadingMore.current || selected.length >= 200 || (stageTotal !== null && selected.length >= stageTotal)) return;
-    loadingMore.current = true;
-    browseBooks({ sort: 'popular', limit: 20, offset: selected.length })
-      .then((r) => setSelected((prev) => {
-        const have = new Set(prev.map((b) => b.book_id));
-        return [...prev, ...r.books.filter((b) => !have.has(b.book_id))];
-      }))
-      .catch(() => {})
-      .finally(() => { loadingMore.current = false; });
-  };
-  const surprise = async () => { const b = await getRandomBook(); navigate(bookPath(b)); };
-
   return (
     <div className="overflow-x-clip">
-      <Hero walls={walls} today={today} stats={stats} />
-      <GenreTiles genres={genres} />
-      <Statement stats={stats} oldBooks={oldBooks} />
-
-      {selected.length > 2 && (
-        <section className="bg-bg-base">
-          <div className="px-4 sm:px-6 lg:px-8 pt-24 text-center">
-            <FadeIn><h2 className="font-statement text-[clamp(2.8rem,8vw,7rem)]">The <span className="font-serif normal-case font-light text-[0.45em] align-middle mx-1">endless</span> shelf</h2></FadeIn>
-            <p className="text-text-muted mt-3">Keep scrolling. It keeps dealing books.</p>
-          </div>
-          {desktop
-            ? <Stage books={selected} title="Most read" total={stageTotal} onSurprise={surprise} onNearEnd={loadMore} />
-            : <div className="pt-10"><StageMobile books={selected} title="Most read" onNearEnd={loadMore} /></div>}
-        </section>
-      )}
-
-      <Journey bg={walls[1] || []} />
+      <Hero stats={stats} />
+      <About stats={stats} />
+      <Shelves />
+      <HowItWorks />
+      {currentUser && <YourShelf items={reading} recs={recs} />}
+      <TodaysPick today={today} />
       <Authors authors={authors} />
-      {currentUser && <ReadingNow items={reading} recs={recs} />}
-      <Culture strip={walls[2] || []} trending={trending} />
-      <QuizTeaser books={walls[0] || []} />
-      <Journal reviews={journal} lists={lists} />
+      <Pace />
+      <Questions />
+      <ShareTheLove books={popular} />
     </div>
   );
 };

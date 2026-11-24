@@ -22,30 +22,30 @@ const NeoButton = ({
   ...props
 }) => {
   const variants = {
-    primary: 'bg-text-main text-bg-base border-text-main',
-    navy: 'bg-text-main text-bg-base border-text-main',
-    secondary: 'bg-transparent text-text-main border-text-main',
-    white: 'bg-transparent text-text-main border-border',
-    red: 'bg-accent-red text-white border-accent-red',
+    primary: 'bg-red text-[#FBFBF4] border-red',
+    navy: 'bg-steel text-[#FBFBF4] border-steel',
+    secondary: 'bg-transparent text-red border-red',
+    white: 'bg-transparent text-text-main border-red/30',
+    red: 'bg-red text-[#FBFBF4] border-red',
   };
   const sweep = {
-    primary: 'bg-accent-red',
-    navy: 'bg-accent-red',
-    red: 'bg-text-main',
-    secondary: 'bg-text-main',
-    white: 'bg-text-main',
+    primary: 'bg-red-deep',
+    navy: 'bg-red',
+    red: 'bg-red-deep',
+    secondary: 'bg-red',
+    white: 'bg-red',
   };
   const hoverText = {
-    primary: 'group-hover:text-white',
-    navy: 'group-hover:text-white',
-    red: 'group-hover:text-bg-base',
-    secondary: 'group-hover:text-bg-base',
-    white: 'group-hover:text-bg-base',
+    primary: 'group-hover:text-[#FBFBF4]',
+    navy: 'group-hover:text-[#FBFBF4]',
+    red: 'group-hover:text-[#FBFBF4]',
+    secondary: 'group-hover:text-[#FBFBF4]',
+    white: 'group-hover:text-[#FBFBF4]',
   };
   const sizes = {
-    sm: 'h-8 px-3.5 text-[12px]',
-    md: 'h-11 px-5 text-[13px]',
-    lg: 'h-14 px-7 text-[15px]',
+    sm: 'h-9 px-4 text-[17px]',
+    md: 'h-11 px-6 text-[20px]',
+    lg: 'h-14 px-8 text-[25px]',
   };
 
   return (
@@ -54,8 +54,8 @@ const NeoButton = ({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'group relative inline-flex items-center justify-center overflow-hidden rounded-full border font-medium tracking-tight select-none',
-        'transition-[transform,opacity] duration-300 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-red',
+        'group relative inline-flex items-center justify-center overflow-hidden rounded-full border-[1.5px] font-display leading-none select-none',
+        'transition-[transform,opacity] duration-500 hover:-rotate-2 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-red',
         variants[variant] || variants.primary,
         sizes[size],
         fullWidth && 'w-full',

@@ -65,7 +65,7 @@ const StatsPage = () => {
 
   return (
     <Page>
-      <PageTitle
+      <PageTitle animal="bear" prop="glasses"
         kicker={<Link to={`/u/${username}`} className="link-under">@{username}</Link>}
         right={
           <div className="flex flex-wrap gap-2 justify-end">
@@ -78,7 +78,7 @@ const StatsPage = () => {
         }
       >
         <span>{year === 'all' ? 'A life' : year}</span>
-        <span className="font-serif italic normal-case text-accent-red">in books</span>
+        <span className="font-serif normal-case text-accent-red">in books</span>
       </PageTitle>
 
       {!t.entries ? (
@@ -105,12 +105,12 @@ const StatsPage = () => {
           <FadeIn>
             <p className="font-serif text-[clamp(1.8rem,4vw,3.6rem)] leading-[1.08] max-w-5xl">
               {`@${username}`} read <span className="text-accent-red">{t.books} {t.books === 1 ? 'book' : 'books'}</span> in {yearLabel},
-              about <span className="italic">{mobyDicks >= 1 ? `${mobyDicks.toFixed(1)} Moby-Dicks` : `${Math.round(mobyDicks * 100)}% of Moby-Dick`}</span> of pages
-              {t.avg_rating ? <>, with an average rating of <span className="italic">{Number(t.avg_rating).toFixed(2)}★</span></> : null}
+              about <span className="">{mobyDicks >= 1 ? `${mobyDicks.toFixed(1)} Moby-Dicks` : `${Math.round(mobyDicks * 100)}% of Moby-Dick`}</span> of pages
+              {t.avg_rating ? <>, with an average rating of <span className="">{Number(t.avg_rating).toFixed(2)}★</span></> : null}
               {stats.vs_crowd !== null && stats.vs_crowd !== undefined && (
                 <>, {Math.abs(stats.vs_crowd) < 0.1 ? 'right in line with everyone else' : stats.vs_crowd > 0 ? `${stats.vs_crowd}★ kinder than the crowd` : `${Math.abs(stats.vs_crowd)}★ harsher than the crowd`}</>
               )}.
-              {busiest.books > 0 && year !== 'all' && <> The busiest month was <span className="italic">{MONTHS[busiest.month - 1]}</span>.</>}
+              {busiest.books > 0 && year !== 'all' && <> The busiest month was <span className="">{MONTHS[busiest.month - 1]}</span>.</>}
             </p>
           </FadeIn>
 
@@ -186,9 +186,9 @@ const StatsPage = () => {
                       {a.photo_url ? (
                         <img src={a.photo_url} alt="" className="w-10 h-10 rounded-full object-cover grayscale group-hover:grayscale-0 transition" />
                       ) : (
-                        <span className="w-10 h-10 rounded-full bg-text-main text-bg-base flex items-center justify-center font-serif italic">{a.name[0]}</span>
+                        <span className="w-10 h-10 rounded-full bg-text-main text-bg-base flex items-center justify-center font-serif ">{a.name[0]}</span>
                       )}
-                      <span className="flex-1 font-wide font-medium text-[13px]">{a.name}</span>
+                      <span className="flex-1 caps font-medium text-[13px]">{a.name}</span>
                       <span className="label">{a.books} {a.books === 1 ? 'book' : 'books'}</span>
                     </Link>
                   </li>

@@ -1,10 +1,12 @@
 """
-Reels: a vertical, one-book-per-screen feed with "takes".
+Flips: a vertical, one-book-per-screen feed with "takes".
 
 A take is a short note about a book (a fun fact, a hot take, a mood) stored as
-a document in MongoDB (`book_takes`). Who may see a take comes from the follow
-graph in PostgreSQL (`user_follow`): the author and the people who follow the
-author. Book data always comes from PostgreSQL.
+a document in MongoDB (`book_takes`). Takes are public, like comments on a
+post: everyone sees who said what. The one exception comes from PostgreSQL:
+takes by a private account (`users.is_private`) are shown only to that
+person and the people who follow them (`user_follow`). Book data always comes
+from PostgreSQL.
 """
 import random
 from datetime import datetime
@@ -21,13 +23,26 @@ VIBES = ["fun_fact", "must_read", "cried", "mind_blown", "slow_start", "overrate
 MAX_TAKES_PER_REEL = 30
 
 
-def _audience(viewer):
-    """User ids whose takes this viewer may see: themselves and everyone they follow."""
+def _following(viewer):
+    """The viewer and everyone they follow."""
     if viewer is None:
         return []
     with db.cursor() as cur:
         cur.execute("SELECT followee_id FROM user_follow WHERE follower_id = %s", (viewer.user_id,))
         return [viewer.user_id] + [r["followee_id"] for r in cur.fetchall()]
+
+
+def _hidden(viewer):
+    """Private accounts whose takes this viewer may not see (they don't follow them)."""
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT u.user_id FROM users u
+               WHERE u.is_private
+                 AND u.user_id <> %(me)s
+                 AND NOT EXISTS (SELECT 1 FROM user_follow f WHERE f.follower_id = %(me)s AND f.followee_id = u.user_id)""",
+            {"me": viewer.user_id if viewer else -1},
+        )
+        return [r["user_id"] for r in cur.fetchall()]
 
 
 def _books(ids):
@@ -53,50 +68,62 @@ def _public(doc, viewer):
     }
 
 
-def _takes_for(book_ids, audience, viewer):
+def _match(viewer, only=None):
+    """MongoDB filter for the takes this viewer may see."""
+    users = {"$nin": _hidden(viewer)}
+    if only is not None:
+        users["$in"] = only
+    return {"user_id": users}
+
+
+def _takes_for(book_ids, viewer, only=None):
     """Visible takes grouped by book: {book_id: [take, ...]} newest first."""
     out = {b: [] for b in book_ids}
-    if not audience or not book_ids:
+    if not book_ids:
         return out
     try:
         cursor = mongo.get_db().book_takes.find(
-            {"book_id": {"$in": list(book_ids)}, "user_id": {"$in": audience}}
+            {"book_id": {"$in": list(book_ids)}, **_match(viewer, only)}
         ).sort("created_at", -1)
         for d in cursor:
             if len(out[d["book_id"]]) < MAX_TAKES_PER_REEL:
                 out[d["book_id"]].append(_public(d, viewer))
     except Exception:
-        pass  # MongoDB down: reels still work, just without takes
+        pass  # MongoDB down: the feed still works, just without takes
     return out
 
 
-def _reels(ids, viewer, audience=None):
+def _reels(ids, viewer):
     books = _books(ids)
-    audience = _audience(viewer) if audience is None else audience
-    takes = _takes_for([i for i in ids if i in books], audience, viewer)
+    takes = _takes_for([i for i in ids if i in books], viewer)
     return [{"book": books[i], "takes": takes[i]} for i in ids if i in books]
+
+
+def _talked_about(viewer, only=None):
+    """Book ids with the newest visible takes, most recent first."""
+    try:
+        pipeline = [
+            {"$match": _match(viewer, only)},
+            {"$group": {"_id": "$book_id", "last": {"$max": "$created_at"}}},
+            {"$sort": {"last": -1}},
+            {"$limit": 60},
+        ]
+        return [d["_id"] for d in mongo.get_db().book_takes.aggregate(pipeline)]
+    except Exception:
+        return []
 
 
 def feed(viewer, mode="for_you", limit=8, genre=None):
     """
     for_you   : well-rated books picked at random (optionally in a genre)
-    following : books the people you follow have posted takes about, newest first
+    latest    : books anyone has just posted takes about, newest first
+    following : books the people you follow have posted takes about
     """
+    if mode == "latest":
+        return _reels(_talked_about(viewer), viewer)
     if mode == "following":
-        audience = _audience(viewer)
-        if not audience:
-            return []
-        try:
-            pipeline = [
-                {"$match": {"user_id": {"$in": audience}}},
-                {"$group": {"_id": "$book_id", "last": {"$max": "$created_at"}}},
-                {"$sort": {"last": -1}},
-                {"$limit": 60},
-            ]
-            ids = [d["_id"] for d in mongo.get_db().book_takes.aggregate(pipeline)]
-        except Exception:
-            return []
-        return _reels(ids, viewer, audience)
+        people = _following(viewer)
+        return _reels(_talked_about(viewer, people), viewer) if people else []
 
     where, params = ["bs.avg_rating >= 3.6", "bs.ratings_count >= 10", "bs.cover_url IS NOT NULL"], []
     if genre:
@@ -121,7 +148,7 @@ def feed(viewer, mode="for_you", limit=8, genre=None):
 
 
 def book_takes(book_id, viewer):
-    return _takes_for([book_id], _audience(viewer), viewer)[book_id]
+    return _takes_for([book_id], viewer)[book_id]
 
 
 def post_take(viewer, book_id, text, vibe=None):
@@ -157,8 +184,8 @@ def _get(take_id):
 
 def toggle_like(viewer, take_id):
     doc = _get(take_id)
-    if doc["user_id"] not in _audience(viewer):
-        raise HTTPException(404, "Take not found")  # not visible to you
+    if doc["user_id"] in _hidden(viewer):
+        raise HTTPException(404, "Take not found")  # a private account you don't follow
     liked = viewer.user_id in doc.get("likes", [])
     mongo.get_db().book_takes.update_one(
         {"_id": doc["_id"]}, {"$pull" if liked else "$addToSet": {"likes": viewer.user_id}}
